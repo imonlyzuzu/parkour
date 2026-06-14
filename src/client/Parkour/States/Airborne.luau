@@ -39,6 +39,18 @@ function Airborne:Update(fsm, world, data, dt)
 			world.doJump(Config.JumpSpeed)
 			return
 		end
+		-- Hard landing -> one fixed, fall-speed-independent pop, then settle.
+		-- Stay airborne for the single bounce arc; the pop's gentle re-landing
+		-- comes back below BounceThreshold and won't re-fire.
+		local fallSpeed = -data.velocity.Y
+		if fallSpeed > Config.BounceThreshold then
+			local av = hrp.AssemblyLinearVelocity
+			hrp.AssemblyLinearVelocity = Vector3.new(av.X, Config.LandingBounce, av.Z)
+			if world.debug then
+				print(string.format("[Parkour] landing bounce (fall=%.0f)", fallSpeed))
+			end
+			return
+		end
 		-- Otherwise resume ground movement, keeping momentum.
 		local speed = Vector2.new(data.velocity.X, data.velocity.Z).Magnitude
 		fsm:TransitionTo(speed > Config.WalkSpeed + 2 and "Sprinting" or "Walking")
