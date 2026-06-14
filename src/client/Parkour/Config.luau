@@ -63,4 +63,11 @@ return {
 	LedgeShimmySpeed = 6, -- A/D shimmy speed along a ledge
 	MantleUp = 42, -- upward launch when mantling a ledge
 	MantleForward = 16, -- forward nudge over the ledge when mantling
+
+	-- Feel limits & landing (movement-feel pass)
+	TerminalFallSpeed = 85, -- hard cap on downward speed (studs/s)
+	MaxGroundSpeed = 44, -- hard cap on commanded horizontal speed (studs/s)
+	LandingBounce = 10, -- fixed upward pop on a hard landing (studs/s)
+	BounceThreshold = 15, -- min incoming fall speed (studs/s) that triggers a bounce
+	GroundStickDeadzone = 2, -- downward speed (studs/s) below which grounded Y is left alone
 }
