@@ -10,14 +10,17 @@
 -- A RenderStepped FSM then delegates per-frame movement to the active state.
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 
 local FSM = require(script.Parent.FSM)
-
--- Custom downward gravity in studs/s^2. Lower than the default (~196) for a
--- slightly floatier, more controllable parkour feel. States may override this.
-local BASE_GRAVITY = 120
+local Config = require(script.Parent.Config)
+local Anim = require(script.Parent.Anim)
+local States = script.Parent.States
 
 local player = Players.LocalPlayer
+
+-- FSM for the currently-spawned character; global input handlers route here.
+local activeFSM = nil
 
 local function computeMass(character: Model): number
 	local total = 0
@@ -60,6 +63,12 @@ local function setup(character: Model)
 		end
 	end)
 
+	-- We drive animations ourselves; silence the stock Animate script.
+	local stockAnimate = character:FindFirstChild("Animate")
+	if stockAnimate then
+		stockAnimate.Disabled = true
+	end
+
 	local totalMass = computeMass(character)
 
 	-- Shared anchor attachment at the HRP origin for all three constraints.
@@ -95,7 +104,7 @@ local function setup(character: Model)
 	alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
 	alignOrientation.RigidityEnabled = false
 	alignOrientation.MaxTorque = 1e6
-	alignOrientation.Responsiveness = 50
+	alignOrientation.Responsiveness = Config.FaceResponsivenessWalk
 	alignOrientation.Parent = hrp
 
 	-- Character-filtered raycast params shared by the FSM and every state.
@@ -115,7 +124,7 @@ local function setup(character: Model)
 		alignOrientation = alignOrientation,
 		raycastParams = raycastParams,
 		totalMass = totalMass,
-		baseGravity = BASE_GRAVITY,
+		baseGravity = Config.BaseGravity,
 	}
 
 	-- Set the custom gravity magnitude (studs/s^2 downward).
@@ -137,23 +146,82 @@ local function setup(character: Model)
 		world.alignOrientation.CFrame = CFrame.lookAlong(Vector3.zero, flat.Unit)
 	end
 
-	world.setGravity(BASE_GRAVITY)
+	-- Replace vertical velocity with `speed` (used for jumps / launches).
+	function world.doJump(speed: number)
+		local v = world.hrp.AssemblyLinearVelocity
+		world.hrp.AssemblyLinearVelocity = Vector3.new(v.X, speed, v.Z)
+	end
+
+	-- Camera-relative WASD direction, flattened to the XZ plane (unit or zero).
+	function world.getMoveVector(): Vector3
+		local camCF = workspace.CurrentCamera.CFrame
+		local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
+		local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
+		if forward.Magnitude < 1e-3 then
+			return Vector3.zero
+		end
+		forward = forward.Unit
+		right = right.Unit
+
+		local move = Vector3.zero
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+			move += forward
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+			move -= forward
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+			move += right
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+			move -= right
+		end
+		return if move.Magnitude > 1e-3 then move.Unit else Vector3.zero
+	end
+
+	function world.isSprintHeld(): boolean
+		return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+			or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+	end
+
+	function world.isKeyDown(keyCode: Enum.KeyCode): boolean
+		return UserInputService:IsKeyDown(keyCode)
+	end
+
+	world.setGravity(Config.BaseGravity)
 	world.setFacing(hrp.CFrame.LookVector)
+	world.anim = Anim.new(humanoid)
 
 	local fsm = FSM.new(world)
 	world.fsm = fsm
+	activeFSM = fsm
 
-	-- States are registered in later tasks. With none registered, the rig
-	-- simply rests upright and motionless under custom gravity, which is the
-	-- Task 1 verification target.
-	fsm:Start()
+	fsm:RegisterState("Walking", require(States.Walking))
+	fsm:RegisterState("Sprinting", require(States.Sprinting))
+
+	fsm:Start("Walking")
 
 	character.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			fsm:Stop()
+			if activeFSM == fsm then
+				activeFSM = nil
+			end
 		end
 	end)
 end
+
+-- Buffer discrete action inputs once, globally, routing to the active FSM.
+UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+	if processed or not activeFSM then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Space then
+		activeFSM:BufferInput("Jump")
+	elseif input.KeyCode == Enum.KeyCode.C then
+		activeFSM:BufferInput("Crouch")
+	end
+end)
 
 local function onCharacterAdded(character: Model)
 	if not character.Parent then

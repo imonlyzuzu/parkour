@@ -69,9 +69,25 @@ function FSM:TransitionTo(name, ...)
 	self.currentState = nextState
 	self.data.stateEnteredAt = os.clock()
 
+	-- Publish the active state for debugging / observability.
+	if self.world and self.world.hrp then
+		self.world.hrp:SetAttribute("ParkourState", name)
+	end
+
 	if nextState.Enter then
 		nextState:Enter(self.world, self.data, prevName, ...)
 	end
+end
+
+-- Like TransitionTo, but a no-op returning false when the target state has not
+-- been registered yet. This lets a state reference states that are introduced
+-- by later tasks; the edge simply "lights up" once that state exists.
+function FSM:TryTransition(name, ...)
+	if not self.states[name] then
+		return false
+	end
+	self:TransitionTo(name, ...)
+	return true
 end
 
 -- Time (seconds) spent in the current state.
