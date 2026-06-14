@@ -164,7 +164,11 @@ function FSM:Start(initialState)
 		self:TransitionTo(initialState)
 	end
 
-	self._conn = RunService.RenderStepped:Connect(function(dt)
+	-- Heartbeat (not RenderStepped): this loop drives physics/velocity, so it
+	-- must run on the simulation step and keep ticking even when the client is
+	-- not rendering (e.g. window unfocused). RenderStepped stops firing while
+	-- the window isn't rendering, which would freeze movement mid-air.
+	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_updateSensors()
 		self:_flushOldInputs(0.5)
 

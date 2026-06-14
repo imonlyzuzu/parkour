@@ -201,6 +201,7 @@ local function setup(character: Model)
 	fsm:RegisterState("Sprinting", require(States.Sprinting))
 	fsm:RegisterState("Sliding", require(States.Sliding))
 	fsm:RegisterState("Landing", require(States.Landing))
+	fsm:RegisterState("Airborne", require(States.Airborne))
 
 	fsm:Start("Walking")
 
