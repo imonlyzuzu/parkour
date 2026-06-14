@@ -74,6 +74,19 @@ local function setup(character: Model)
 		stockAnimate.Disabled = true
 	end
 
+	-- Kill the character's contribution to collision restitution so landings
+	-- don't rebound. A contact's elasticity is a weighted blend of both parts;
+	-- a high ElasticityWeight makes the character dominate, removing bounce
+	-- against any surface without touching course parts. Density/friction are
+	-- preserved from each part, so mass and grip are unchanged.
+	for _, part in character:GetDescendants() do
+		if part:IsA("BasePart") then
+			local cur = part.CurrentPhysicalProperties
+			part.CustomPhysicalProperties =
+				PhysicalProperties.new(cur.Density, cur.Friction, 0, cur.FrictionWeight, 50)
+		end
+	end
+
 	local totalMass = computeMass(character)
 
 	-- Shared anchor attachment at the HRP origin for all three constraints.
