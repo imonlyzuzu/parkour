@@ -3,6 +3,7 @@
 -- mantles up onto it, and Crouch/back drops off.
 
 local Config = require(script.Parent.Parent.Config)
+local Surfaces = require(script.Parent.Parent.Surfaces)
 
 local LedgeHang = {}
 
@@ -64,7 +65,7 @@ function LedgeHang:Update(fsm, world, data, dt)
 			-data.ledgeNormal * Config.LedgeGrabReach,
 			world.raycastParams
 		)
-		if stillWall then
+		if stillWall and Surfaces.allows(stillWall.Instance, "Grab") then
 			world.setPlanarVelocity(Vector2.new(step.X, step.Z) * Config.LedgeShimmySpeed)
 		end
 	end

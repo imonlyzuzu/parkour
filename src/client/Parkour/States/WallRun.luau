@@ -3,6 +3,7 @@
 -- jumping launches off the wall normal.
 
 local Config = require(script.Parent.Parent.Config)
+local Surfaces = require(script.Parent.Parent.Surfaces)
 
 local function flat(v: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -54,7 +55,7 @@ function WallRun:Update(fsm, world, data, dt)
 	-- Still next to the wall, holding forward, within the time limit?
 	local toWall = -data.wallNormalFlat
 	local hit = workspace:Raycast(world.hrp.Position, toWall * (Config.WallRayDist + 1), world.raycastParams)
-	if not hit or not world.isKeyDown(Enum.KeyCode.W) or fsm:TimeInState() >= Config.WallRunMaxTime then
+	if not hit or not Surfaces.allows(hit.Instance, "Wallrun") or not world.isKeyDown(Enum.KeyCode.W) or fsm:TimeInState() >= Config.WallRunMaxTime then
 		fsm:TransitionTo("Airborne")
 		return
 	end

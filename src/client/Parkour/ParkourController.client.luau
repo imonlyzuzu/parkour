@@ -15,6 +15,7 @@ local UserInputService = game:GetService("UserInputService")
 local FSM = require(script.Parent.FSM)
 local Config = require(script.Parent.Config)
 local Anim = require(script.Parent.Anim)
+local Surfaces = require(script.Parent.Surfaces)
 local States = script.Parent.States
 
 local player = Players.LocalPlayer
@@ -216,7 +217,7 @@ local function setup(character: Model)
 		local rp = world.raycastParams
 		local low = workspace:Raycast(hrp.Position - Vector3.new(0, 1, 0), fwd * Config.VaultReach, rp)
 		local high = workspace:Raycast(hrp.Position + Vector3.new(0, 1.5, 0), fwd * Config.VaultReach, rp)
-		if low and not high then
+		if low and not high and Surfaces.allows(low.Instance, "Vault") then
 			local top = workspace:Raycast(low.Position + fwd * 0.5 + Vector3.new(0, 3, 0), Vector3.new(0, -4, 0), rp)
 			if top then
 				return { topY = top.Position.Y, forward = fwd, normal = flatten(low.Normal) }

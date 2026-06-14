@@ -8,6 +8,7 @@
 -- buffered input, so coyote time and buffering need no extra bookkeeping here.
 
 local Config = require(script.Parent.Parent.Config)
+local Surfaces = require(script.Parent.Parent.Surfaces)
 
 local function flat(v: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -73,7 +74,7 @@ function Airborne:Update(fsm, world, data, dt)
 	if data.velocity.Y <= 2 then
 		local fwd = flat(hrp.CFrame.LookVector)
 		local front = workspace:Raycast(hrp.Position + Vector3.new(0, 1, 0), fwd * Config.LedgeGrabReach, world.raycastParams)
-		if front then
+		if front and Surfaces.allows(front.Instance, "Grab") then
 			local top = workspace:Raycast(
 				front.Position + fwd * 0.5 + Vector3.new(0, 2.5, 0),
 				Vector3.new(0, -3, 0),
@@ -104,13 +105,20 @@ function Airborne:Update(fsm, world, data, dt)
 		local rightHit = workspace:Raycast(pos, right * Config.WallRayDist, rp)
 		local frontHit = workspace:Raycast(pos, fwd * Config.WallRayDist, rp)
 
-		if world.isKeyDown(Enum.KeyCode.W) and (leftHit or rightHit) then
-			local hit = leftHit or rightHit
-			data.wallNormal = hit.Normal
-			data.wallSide = leftHit and "L" or "R"
+		-- Wall-run only on a Wallrunnable side; prefer whichever side qualifies.
+		local sideHit, side
+		if leftHit and Surfaces.allows(leftHit.Instance, "Wallrun") then
+			sideHit, side = leftHit, "L"
+		elseif rightHit and Surfaces.allows(rightHit.Instance, "Wallrun") then
+			sideHit, side = rightHit, "R"
+		end
+
+		if world.isKeyDown(Enum.KeyCode.W) and sideHit then
+			data.wallNormal = sideHit.Normal
+			data.wallSide = side
 			fsm:TransitionTo("WallRun")
 			return
-		elseif frontHit then
+		elseif frontHit and Surfaces.allows(frontHit.Instance, "Cling") then
 			data.wallNormal = frontHit.Normal
 			fsm:TransitionTo("WallCling")
 			return
