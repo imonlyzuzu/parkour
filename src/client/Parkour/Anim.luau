@@ -17,7 +17,7 @@ local CONFIG = {
 	Idle = { kfs = "Idle", priority = Enum.AnimationPriority.Idle },
 	Walk = { id = 180426354, priority = Enum.AnimationPriority.Movement },
 	Sprint = { kfs = "Sprint", priority = Enum.AnimationPriority.Movement },
-	Slide = { kfs = "Slide", priority = Enum.AnimationPriority.Action, looped = false },
+	Slide = { kfs = "Slide", priority = Enum.AnimationPriority.Action },
 	Roll = { kfs = "Roll", priority = Enum.AnimationPriority.Action, looped = false },
 	Fall = { kfs = "Falling", priority = Enum.AnimationPriority.Movement },
 	WallRunL = { kfs = "WallRunL", priority = Enum.AnimationPriority.Action },

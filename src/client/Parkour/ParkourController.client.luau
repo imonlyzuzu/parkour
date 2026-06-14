@@ -125,6 +125,7 @@ local function setup(character: Model)
 		raycastParams = raycastParams,
 		totalMass = totalMass,
 		baseGravity = Config.BaseGravity,
+		debug = Config.Debug,
 	}
 
 	-- Set the custom gravity magnitude (studs/s^2 downward).
@@ -198,6 +199,8 @@ local function setup(character: Model)
 
 	fsm:RegisterState("Walking", require(States.Walking))
 	fsm:RegisterState("Sprinting", require(States.Sprinting))
+	fsm:RegisterState("Sliding", require(States.Sliding))
+	fsm:RegisterState("Landing", require(States.Landing))
 
 	fsm:Start("Walking")
 

@@ -73,6 +73,10 @@ function FSM:TransitionTo(name, ...)
 	if self.world and self.world.hrp then
 		self.world.hrp:SetAttribute("ParkourState", name)
 	end
+	if self.world and self.world.debug then
+		local v = self.data.velocity
+		print(string.format("[Parkour] %s -> %s (spd=%.1f)", tostring(prevName), name, Vector3.new(v.X, 0, v.Z).Magnitude))
+	end
 
 	if nextState.Enter then
 		nextState:Enter(self.world, self.data, prevName, ...)

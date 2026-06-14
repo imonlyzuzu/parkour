@@ -3,6 +3,9 @@
 -- feel can be tweaked quickly while play-testing in Studio.
 
 return {
+	-- When true, the FSM prints every state transition to the output.
+	Debug = true,
+
 	-- Gravity (studs/s^2 downward). Default workspace gravity is ~196.
 	BaseGravity = 110,
 
