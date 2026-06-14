@@ -5,6 +5,7 @@
 local Config = require(script.Parent.Parent.Config)
 
 local Sliding = {}
+Sliding.Grounded = true
 
 function Sliding:Enter(world, data)
 	world.setGravity(Config.BaseGravity)

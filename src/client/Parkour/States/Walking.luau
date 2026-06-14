@@ -5,6 +5,7 @@
 local Config = require(script.Parent.Parent.Config)
 
 local Walking = {}
+Walking.Grounded = true
 
 function Walking:Enter(world)
 	world.setGravity(Config.BaseGravity)

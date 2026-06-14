@@ -6,6 +6,7 @@
 local Config = require(script.Parent.Parent.Config)
 
 local Landing = {}
+Landing.Grounded = true
 
 function Landing:Enter(world, data)
 	world.setGravity(Config.BaseGravity)

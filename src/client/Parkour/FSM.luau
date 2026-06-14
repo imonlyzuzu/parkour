@@ -9,6 +9,8 @@
 
 local RunService = game:GetService("RunService")
 
+local Config = require(script.Parent.Config)
+
 local FSM = {}
 FSM.__index = FSM
 
@@ -159,6 +161,38 @@ function FSM:_updateSensors()
 	end
 end
 
+-- Global movement limits, applied every frame after the active state updates:
+-- terminal fall speed, max commanded ground speed, and a grounded snap-and-zero
+-- so landings plant cleanly instead of being popped out of penetration.
+function FSM:_applyLimits()
+	local world = self.world
+	local data = self.data
+	local hrp = world.hrp
+
+	-- Terminal fall: never accelerate downward past the tested envelope.
+	local v = hrp.AssemblyLinearVelocity
+	if v.Y < -Config.TerminalFallSpeed then
+		hrp.AssemblyLinearVelocity = Vector3.new(v.X, -Config.TerminalFallSpeed, v.Z)
+		v = Vector3.new(v.X, -Config.TerminalFallSpeed, v.Z)
+	end
+
+	-- Max ground speed: clamp the commanded planar velocity magnitude.
+	local plane = world.linearVelocity.PlaneVelocity
+	if plane.Magnitude > Config.MaxGroundSpeed then
+		world.linearVelocity.PlaneVelocity = plane.Unit * Config.MaxGroundSpeed
+	end
+
+	-- Grounded snap-and-zero: in a grounded state, cancel leftover downward
+	-- velocity (beyond a deadzone) so the character plants on edges/seams.
+	-- Airborne/WallRun/WallCling/Vaulting/LedgeHang are intentionally NOT marked
+	-- Grounded, so this never fires for them (e.g. the Airborne landing bounce).
+	if data.isGrounded and self.currentState.Grounded then
+		if v.Y < -Config.GroundStickDeadzone then
+			hrp.AssemblyLinearVelocity = Vector3.new(v.X, 0, v.Z)
+		end
+	end
+end
+
 function FSM:Start(initialState)
 	if initialState then
 		self:TransitionTo(initialState)
@@ -175,6 +209,8 @@ function FSM:Start(initialState)
 		if self.currentState and self.currentState.Update then
 			self.currentState:Update(self, self.world, self.data, dt)
 		end
+
+		self:_applyLimits()
 	end)
 end
 
