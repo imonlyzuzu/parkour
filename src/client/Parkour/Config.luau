@@ -51,6 +51,7 @@ return {
 	WallJumpUp = 42, -- vertical launch off a wall
 	WallJumpOut = 34, -- push away from the wall normal
 	WallClingTime = 0.8, -- how long a head-on cling holds
+	WallCooldown = 0.4, -- ignore walls this long after a wall jump (no re-stick)
 
 	-- Vault / ledge (Task 6)
 	VaultMaxHeight = 4, -- obstacles up to this tall can be vaulted
