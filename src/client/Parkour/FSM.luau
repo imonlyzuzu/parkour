@@ -186,7 +186,7 @@ function FSM:_applyLimits()
 	-- velocity (beyond a deadzone) so the character plants on edges/seams.
 	-- Airborne/WallRun/WallCling/Vaulting/LedgeHang are intentionally NOT marked
 	-- Grounded, so this never fires for them (e.g. the Airborne landing bounce).
-	if data.isGrounded and self.currentState.Grounded then
+	if data.isGrounded and self.currentState and self.currentState.Grounded then
 		if v.Y < -Config.GroundStickDeadzone then
 			hrp.AssemblyLinearVelocity = Vector3.new(v.X, 0, v.Z)
 		end
