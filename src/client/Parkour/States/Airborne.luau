@@ -56,6 +56,30 @@ function Airborne:Update(fsm, world, data, dt)
 		end
 	end
 
+	-- Ledge grab: a wall just ahead with a top edge within reach. Works at low
+	-- speed (e.g. jumping up at a ledge); only once at/after the jump's apex.
+	if data.velocity.Y <= 2 then
+		local fwd = flat(hrp.CFrame.LookVector)
+		local front = workspace:Raycast(hrp.Position + Vector3.new(0, 1, 0), fwd * Config.LedgeGrabReach, world.raycastParams)
+		if front then
+			local top = workspace:Raycast(
+				front.Position + fwd * 0.5 + Vector3.new(0, 2.5, 0),
+				Vector3.new(0, -3, 0),
+				world.raycastParams
+			)
+			if top then
+				local dy = top.Position.Y - hrp.Position.Y
+				if dy >= -0.5 and dy <= Config.LedgeReachUp then
+					data.ledgeTopY = top.Position.Y
+					data.ledgeNormal = flat(front.Normal)
+					data.ledgeHitPos = front.Position
+					fsm:TransitionTo("LedgeHang")
+					return
+				end
+			end
+		end
+	end
+
 	-- Wall interaction: only while carrying horizontal speed and not just
 	-- after a wall jump (so we don't immediately re-stick).
 	local hSpeed = Vector2.new(data.velocity.X, data.velocity.Z).Magnitude

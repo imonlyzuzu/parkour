@@ -54,11 +54,13 @@ return {
 	WallCooldown = 0.4, -- ignore walls this long after a wall jump (no re-stick)
 
 	-- Vault / ledge (Task 6)
-	VaultMaxHeight = 4, -- obstacles up to this tall can be vaulted
-	VaultLowRay = 2.2, -- low forward probe height offset
-	VaultSpeed = 30, -- forward speed carried through a vault
-	VaultDuration = 0.32, -- time spent in the vault arc
-	LedgeGrabReach = 3.2, -- forward distance to detect a grabbable ledge
+	VaultReach = 3, -- forward probe distance for a vaultable obstacle
+	VaultMinSpeed = 8, -- need at least this horizontal speed to vault
+	VaultSpeed = 28, -- forward speed carried through a vault
+	VaultDuration = 0.32, -- time spent driving the vault arc
+	LedgeGrabReach = 3, -- forward distance to detect a grabbable ledge
+	LedgeReachUp = 2.5, -- how far above the HRP a ledge top can be and still grab
 	LedgeShimmySpeed = 6, -- A/D shimmy speed along a ledge
-	MantleUp = 40, -- upward launch when mantling a ledge
+	MantleUp = 42, -- upward launch when mantling a ledge
+	MantleForward = 16, -- forward nudge over the ledge when mantling
 }

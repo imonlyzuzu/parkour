@@ -22,6 +22,11 @@ local player = Players.LocalPlayer
 -- FSM for the currently-spawned character; global input handlers route here.
 local activeFSM = nil
 
+local function flatten(v: Vector3): Vector3
+	local f = Vector3.new(v.X, 0, v.Z)
+	return f.Magnitude > 1e-3 and f.Unit or f
+end
+
 local function computeMass(character: Model): number
 	local total = 0
 	for _, part in character:GetDescendants() do
@@ -189,6 +194,24 @@ local function setup(character: Model)
 		return UserInputService:IsKeyDown(keyCode)
 	end
 
+	-- Detect a waist-high obstacle directly ahead: a low forward ray hits while
+	-- a high one is clear (so it's low enough to clear), and the obstacle's top
+	-- is found. Returns { topY, forward, normal } or nil.
+	function world.detectVault()
+		local hrp = world.hrp
+		local fwd = flatten(hrp.CFrame.LookVector)
+		local rp = world.raycastParams
+		local low = workspace:Raycast(hrp.Position - Vector3.new(0, 1, 0), fwd * Config.VaultReach, rp)
+		local high = workspace:Raycast(hrp.Position + Vector3.new(0, 1.5, 0), fwd * Config.VaultReach, rp)
+		if low and not high then
+			local top = workspace:Raycast(low.Position + fwd * 0.5 + Vector3.new(0, 3, 0), Vector3.new(0, -4, 0), rp)
+			if top then
+				return { topY = top.Position.Y, forward = fwd, normal = flatten(low.Normal) }
+			end
+		end
+		return nil
+	end
+
 	world.setGravity(Config.BaseGravity)
 	world.setFacing(hrp.CFrame.LookVector)
 	world.anim = Anim.new(humanoid)
@@ -204,6 +227,8 @@ local function setup(character: Model)
 	fsm:RegisterState("Airborne", require(States.Airborne))
 	fsm:RegisterState("WallRun", require(States.WallRun))
 	fsm:RegisterState("WallCling", require(States.WallCling))
+	fsm:RegisterState("Vaulting", require(States.Vaulting))
+	fsm:RegisterState("LedgeHang", require(States.LedgeHang))
 
 	fsm:Start("Walking")
 

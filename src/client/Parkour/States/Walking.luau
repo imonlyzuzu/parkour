@@ -25,6 +25,17 @@ function Walking:Update(fsm, world, data, dt)
 		return
 	end
 
+	-- Vault over a waist-high obstacle when moving into one.
+	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed then
+		local vault = world.detectVault()
+		if vault then
+			data.vault = vault
+			if fsm:TryTransition("Vaulting") then
+				return
+			end
+		end
+	end
+
 	-- Accelerate the planar velocity toward the target with a smooth curve.
 	local target = Vector2.new(moveDir.X, moveDir.Z) * Config.WalkSpeed
 	local current = world.linearVelocity.PlaneVelocity

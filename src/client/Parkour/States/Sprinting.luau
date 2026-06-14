@@ -26,6 +26,17 @@ function Sprinting:Update(fsm, world, data, dt)
 		return
 	end
 
+	-- Vault over a waist-high obstacle when running into one.
+	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed then
+		local vault = world.detectVault()
+		if vault then
+			data.vault = vault
+			if fsm:TryTransition("Vaulting") then
+				return
+			end
+		end
+	end
+
 	-- Crouch while sprinting -> slide (active once Task 3 lands).
 	if fsm:ConsumeBufferedInput("Crouch", Config.JumpBuffer) and fsm:TryTransition("Sliding") then
 		return
