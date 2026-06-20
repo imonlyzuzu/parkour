@@ -9,7 +9,7 @@ Walking.Grounded = true
 
 function Walking:Enter(world)
 	world.setGravity(Config.BaseGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessWalk
+	world.setTurnSpeed(Config.FaceResponsivenessWalk)
 end
 
 function Walking:Update(fsm, world, data, dt)
@@ -26,9 +26,10 @@ function Walking:Update(fsm, world, data, dt)
 		return
 	end
 
-	-- Vault over a waist-high obstacle when moving into one.
-	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed then
-		local vault = world.detectVault()
+	-- Vault when entering a placed Vaultable trigger volume with enough speed.
+	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed
+		and os.clock() - (data.lastVaultTime or 0) > Config.VaultCooldown then
+		local vault = world.detectVaultTrigger()
 		if vault then
 			data.vault = vault
 			if fsm:TryTransition("Vaulting") then
@@ -39,7 +40,7 @@ function Walking:Update(fsm, world, data, dt)
 
 	-- Accelerate the planar velocity toward the target with a smooth curve.
 	local target = Vector2.new(moveDir.X, moveDir.Z) * Config.WalkSpeed
-	local current = world.linearVelocity.PlaneVelocity
+	local current = world.getPlanarVelocity()
 	world.setPlanarVelocity(current:Lerp(target, math.min(1, Config.WalkAccel * dt)))
 
 	-- Strafe: face wherever the camera is looking.

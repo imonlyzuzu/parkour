@@ -3,25 +3,44 @@
 --
 -- Replaces default Humanoid locomotion with a physics rig we drive ourselves:
 --   * Humanoid is locked to the Physics state (no default walk/jump/fall).
---   * A LinearVelocity (Plane mode) controls planar XZ movement.
---   * A VectorForce re-implements gravity so we can tune jump arcs / hang time.
---   * An AlignOrientation keeps the character upright and controls facing,
---     instead of writing HRP.CFrame every frame (which fights the physics).
--- A RenderStepped FSM then delegates per-frame movement to the active state.
+--   * A LinearVelocity (Vector mode) drives the ENTIRE velocity vector; gravity is
+--     integrated in code by the FSM (no VectorForce) so jump arcs are tunable.
+--   * A RIGID AlignOrientation keeps the rig perfectly upright (it can never tilt
+--     on contact); yaw is eased in code so turning still feels smooth.
+-- A Heartbeat FSM then delegates per-frame movement to the active state.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
 
 local FSM = require(script.Parent.FSM)
 local Config = require(script.Parent.Config)
 local Anim = require(script.Parent.Anim)
-local Surfaces = require(script.Parent.Surfaces)
 local States = script.Parent.States
 
 local player = Players.LocalPlayer
 
 -- FSM for the currently-spawned character; global input handlers route here.
 local activeFSM = nil
+
+-- Vault trigger volumes: parts tagged Vaultable that designers place over an
+-- obstacle. Cached as a set and kept current via CollectionService signals so
+-- vault detection is a cheap per-tick iteration (see world.detectVaultTrigger).
+local VAULT_TAG = "Vaultable"
+local vaultTriggers = {}
+for _, inst in CollectionService:GetTagged(VAULT_TAG) do
+	if inst:IsA("BasePart") then
+		vaultTriggers[inst] = true
+	end
+end
+CollectionService:GetInstanceAddedSignal(VAULT_TAG):Connect(function(inst)
+	if inst:IsA("BasePart") then
+		vaultTriggers[inst] = true
+	end
+end)
+CollectionService:GetInstanceRemovedSignal(VAULT_TAG):Connect(function(inst)
+	vaultTriggers[inst] = nil
+end)
 
 local function flatten(v: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -75,16 +94,19 @@ local function setup(character: Model)
 		stockAnimate.Disabled = true
 	end
 
-	-- Kill the character's contribution to collision restitution so landings
-	-- don't rebound. A contact's elasticity is a weighted blend of both parts;
-	-- a high ElasticityWeight makes the character dominate, removing bounce
-	-- against any surface without touching course parts. Density/friction are
-	-- preserved from each part, so mass and grip are unchanged.
+	-- Zero the character's contribution to BOTH friction and restitution. We drive
+	-- the whole velocity vector ourselves (see the LinearVelocity below), so contact
+	-- friction must never act on the rig: with intact friction a wall's huge normal
+	-- force produces a vertical friction force that exceeds gravity and pins the
+	-- player to the wall ("floating"). Elasticity 0 kills landing rebound. A contact
+	-- property is a weighted blend of both parts; the high weights make the character
+	-- dominate, so this holds against any surface without touching course parts.
+	-- Density is preserved from each part, so mass is unchanged.
 	for _, part in character:GetDescendants() do
 		if part:IsA("BasePart") then
 			local cur = part.CurrentPhysicalProperties
 			part.CustomPhysicalProperties =
-				PhysicalProperties.new(cur.Density, cur.Friction, 0, cur.FrictionWeight, 50)
+				PhysicalProperties.new(cur.Density, 0, 0, 50, 50)
 		end
 	end
 
@@ -95,42 +117,43 @@ local function setup(character: Model)
 	rootAttachment.Name = "ParkourRoot"
 	rootAttachment.Parent = hrp
 
-	-- Planar (XZ) movement. Y is left unconstrained for gravity / jumps.
+	-- Full 3D velocity control. We own the ENTIRE velocity vector and write it every
+	-- tick (FSM Heartbeat); gravity is integrated in code, not applied as a force.
+	-- MaxForce is high enough to override the engine's own gravity each step, so the
+	-- effective gravity is whatever the FSM commands -- and nothing (e.g. a wall we
+	-- never drive into) can fight us through contact forces.
 	local linearVelocity = Instance.new("LinearVelocity")
 	linearVelocity.Name = "ParkourLinearVelocity"
 	linearVelocity.Attachment0 = rootAttachment
 	linearVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
-	linearVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
-	linearVelocity.PrimaryTangentAxis = Vector3.new(1, 0, 0)
-	linearVelocity.SecondaryTangentAxis = Vector3.new(0, 0, 1)
+	linearVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
 	linearVelocity.MaxForce = 1e6
-	linearVelocity.PlaneVelocity = Vector2.zero
+	linearVelocity.VectorVelocity = Vector3.zero
 	linearVelocity.Parent = hrp
 
-	-- Custom gravity: cancel the engine's gravity and re-apply our own.
-	local vectorForce = Instance.new("VectorForce")
-	vectorForce.Name = "ParkourGravity"
-	vectorForce.Attachment0 = rootAttachment
-	vectorForce.RelativeTo = Enum.ActuatorRelativeTo.World
-	vectorForce.ApplyAtCenterOfMass = true
-	vectorForce.Force = Vector3.zero
-	vectorForce.Parent = hrp
-
 	-- Upright lock + yaw control, instead of setting HRP.CFrame each frame.
+	-- RIGID: the rig snaps to the target orientation every physics step, so a
+	-- collision torque can never tilt it. The target is always built from a
+	-- flattened (upright) direction, and we ease the yaw of that target in code
+	-- (world.updateFacing) so turning stays smooth without ever leaning.
 	local alignOrientation = Instance.new("AlignOrientation")
 	alignOrientation.Name = "ParkourOrientation"
 	alignOrientation.Attachment0 = rootAttachment
 	alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	alignOrientation.RigidityEnabled = false
+	alignOrientation.RigidityEnabled = true
 	alignOrientation.MaxTorque = 1e6
-	alignOrientation.Responsiveness = Config.FaceResponsivenessWalk
 	alignOrientation.Parent = hrp
 
-	-- Character-filtered raycast params shared by the FSM and every state.
+	-- Character-filtered raycast params shared by the FSM and every state. All
+	-- movement probes (ground, wall-slide, ledge) only see SOLID geometry:
+	-- RespectCanCollide skips CanCollide=false parts, so non-colliding trigger
+	-- volumes (e.g. Vaultable hitboxes) and decorations never register as floors,
+	-- walls or ledges.
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 	raycastParams.FilterDescendantsInstances = { character }
 	raycastParams.IgnoreWater = true
+	raycastParams.RespectCanCollide = true
 
 	local world = {
 		player = player,
@@ -139,37 +162,80 @@ local function setup(character: Model)
 		hrp = hrp,
 		rootAttachment = rootAttachment,
 		linearVelocity = linearVelocity,
-		vectorForce = vectorForce,
 		alignOrientation = alignOrientation,
 		raycastParams = raycastParams,
 		totalMass = totalMass,
-		baseGravity = Config.BaseGravity,
+		-- The single owned target velocity (world space). States set XZ via
+		-- setPlanarVelocity / Y via doJump; the FSM integrates gravity into Y,
+		-- applies wall-slide + limits, then flushes it to the constraint.
+		commandV = Vector3.zero,
+		-- Live gravity magnitude (studs/s^2 downward) for the FSM's integration.
+		gravity = Config.BaseGravity,
+		-- Orientation easing: facingDir eases toward targetFacing each tick at
+		-- turnSpeed; the rigid AlignOrientation then tracks facingDir exactly
+		-- (always upright, so the rig can never tilt on contact).
+		facingDir = flatten(hrp.CFrame.LookVector),
+		targetFacing = flatten(hrp.CFrame.LookVector),
+		turnSpeed = Config.FaceResponsivenessWalk,
 		debug = Config.Debug,
 	}
 
-	-- Set the custom gravity magnitude (studs/s^2 downward).
+	-- Set the gravity magnitude (studs/s^2 downward) the FSM integrates into Y.
 	function world.setGravity(g: number)
-		world.vectorForce.Force = Vector3.new(0, world.totalMass * (workspace.Gravity - g), 0)
+		world.gravity = g
 	end
 
-	-- Command planar velocity directly (Vector2 in world XZ).
+	-- Command planar velocity (Vector2 in world XZ). Y stays owned by the FSM's
+	-- gravity integration / jumps, so it is left untouched here.
 	function world.setPlanarVelocity(planar: Vector2)
-		world.linearVelocity.PlaneVelocity = planar
+		world.commandV = Vector3.new(planar.X, world.commandV.Y, planar.Y)
 	end
 
-	-- Point the character along a (flattened) direction via AlignOrientation.
+	-- Current commanded planar velocity (the XZ of the owned vector). States that
+	-- accelerate toward a target lerp from this.
+	function world.getPlanarVelocity(): Vector2
+		return Vector2.new(world.commandV.X, world.commandV.Z)
+	end
+
+	-- Push the owned velocity vector to the constraint. The FSM calls this once at
+	-- the end of each tick, after gravity, wall-slide and limits are applied.
+	function world.flush()
+		world.linearVelocity.VectorVelocity = world.commandV
+	end
+
+	-- Aim the character along a (flattened) direction. Sets the easing TARGET only;
+	-- the orientation eases toward it in updateFacing so turns stay smooth while the
+	-- rigid AlignOrientation keeps the rig perfectly upright.
 	function world.setFacing(direction: Vector3)
-		local flat = Vector3.new(direction.X, 0, direction.Z)
+		local flat = flatten(direction)
 		if flat.Magnitude < 1e-3 then
 			return
 		end
-		world.alignOrientation.CFrame = CFrame.lookAlong(Vector3.zero, flat.Unit)
+		world.targetFacing = flat
 	end
 
-	-- Replace vertical velocity with `speed` (used for jumps / launches).
+	-- Per-state turn speed (formerly AlignOrientation.Responsiveness; now drives the
+	-- code-side yaw easing below).
+	function world.setTurnSpeed(speed: number)
+		world.turnSpeed = speed
+	end
+
+	-- Ease facingDir toward targetFacing and write the rigid orientation. Called by
+	-- the FSM once per tick.
+	function world.updateFacing(dt: number)
+		local eased = world.facingDir:Lerp(world.targetFacing, math.min(1, world.turnSpeed * dt))
+		if eased.Magnitude < 1e-3 then
+			-- near-opposite vectors pass through zero on Lerp; snap instead.
+			eased = world.targetFacing
+		end
+		world.facingDir = eased.Unit
+		world.alignOrientation.CFrame = CFrame.lookAlong(Vector3.zero, world.facingDir)
+	end
+
+	-- Replace the owned vertical velocity with `speed` (jumps / launches). The FSM
+	-- flushes it to the constraint this same tick, overriding gravity integration.
 	function world.doJump(speed: number)
-		local v = world.hrp.AssemblyLinearVelocity
-		world.hrp.AssemblyLinearVelocity = Vector3.new(v.X, speed, v.Z)
+		world.commandV = Vector3.new(world.commandV.X, speed, world.commandV.Z)
 	end
 
 	-- Camera-relative WASD direction, flattened to the XZ plane (unit or zero).
@@ -208,26 +274,28 @@ local function setup(character: Model)
 		return UserInputService:IsKeyDown(keyCode)
 	end
 
-	-- Detect a waist-high obstacle directly ahead: a low forward ray hits while
-	-- a high one is clear (so it's low enough to clear), and the obstacle's top
-	-- is found. Returns { topY, forward, normal } or nil.
-	function world.detectVault()
-		local hrp = world.hrp
-		local fwd = flatten(hrp.CFrame.LookVector)
-		local rp = world.raycastParams
-		local low = workspace:Raycast(hrp.Position - Vector3.new(0, 1, 0), fwd * Config.VaultReach, rp)
-		local high = workspace:Raycast(hrp.Position + Vector3.new(0, 1.5, 0), fwd * Config.VaultReach, rp)
-		if low and not high and Surfaces.allows(low.Instance, "Vault") then
-			local top = workspace:Raycast(low.Position + fwd * 0.5 + Vector3.new(0, 3, 0), Vector3.new(0, -4, 0), rp)
-			if top then
-				return { topY = top.Position.Y, forward = fwd, normal = flatten(low.Normal) }
+	-- Is the HRP inside a placed Vaultable trigger volume? Returns { topY, forward }
+	-- for the Vaulting state, or nil. Direction follows the player's movement (so
+	-- you vault whichever way you're going); pop height is the volume's top surface.
+	-- Containment handles a rotated volume; topY assumes it is placed upright.
+	function world.detectVaultTrigger()
+		local pos = world.hrp.Position
+		for part in vaultTriggers do
+			if part.Parent then
+				local rel = part.CFrame:PointToObjectSpace(pos)
+				local h = part.Size * 0.5
+				if math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z then
+					local moving = flatten(world.hrp.AssemblyLinearVelocity)
+					local fwd = if moving.Magnitude > 1e-2 then moving else flatten(world.hrp.CFrame.LookVector)
+					return { topY = part.Position.Y + part.Size.Y * 0.5, forward = fwd }
+				end
 			end
 		end
 		return nil
 	end
 
 	world.setGravity(Config.BaseGravity)
-	world.setFacing(hrp.CFrame.LookVector)
+	world.updateFacing(0) -- write the initial upright orientation immediately
 	world.anim = Anim.new(humanoid)
 
 	local fsm = FSM.new(world)
@@ -240,9 +308,8 @@ local function setup(character: Model)
 	fsm:RegisterState("Landing", require(States.Landing))
 	fsm:RegisterState("Airborne", require(States.Airborne))
 	fsm:RegisterState("WallRun", require(States.WallRun))
-	fsm:RegisterState("WallCling", require(States.WallCling))
 	fsm:RegisterState("Vaulting", require(States.Vaulting))
-	fsm:RegisterState("LedgeHang", require(States.LedgeHang))
+	fsm:RegisterState("Mantle", require(States.Mantle))
 
 	fsm:Start("Walking")
 

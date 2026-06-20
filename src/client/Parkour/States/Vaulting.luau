@@ -1,6 +1,7 @@
--- Vaulting: triggered from Walking/Sprinting when running into a waist-high
--- obstacle. Pops up just enough to clear the obstacle top and carries forward
--- momentum over it, then drops back into running.
+-- Vaulting: triggered from Walking/Sprinting when entering a placed Vaultable
+-- trigger volume with enough speed. Pops up just enough to clear the volume's top
+-- and carries forward momentum (the player's heading) over it, then drops back
+-- into running.
 
 local Config = require(script.Parent.Parent.Config)
 
@@ -10,11 +11,15 @@ local function flat(v: Vector3): Vector3
 end
 
 local Vaulting = {}
+-- Vaulting drives forward over an obstacle, so the FSM's wall-slide (which would
+-- strip the into-obstacle component) must not run for it.
+Vaulting.SkipWallSlide = true
 
 function Vaulting:Enter(world, data)
 	world.setGravity(Config.BaseGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessSprint
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 	world.anim:play("Roll", { restart = true })
+	data.lastVaultTime = os.clock() -- gates re-trigger if we land back inside the volume
 
 	local vault = data.vault
 	data.vaultForward = (vault and vault.forward) or flat(world.hrp.CFrame.LookVector)
@@ -25,8 +30,7 @@ function Vaulting:Enter(world, data)
 	local pop = math.sqrt(2 * Config.BaseGravity * math.max(clearHeight + 1.2, 1))
 
 	world.setPlanarVelocity(Vector2.new(data.vaultForward.X, data.vaultForward.Z) * Config.VaultSpeed)
-	local v = world.hrp.AssemblyLinearVelocity
-	world.hrp.AssemblyLinearVelocity = Vector3.new(v.X, pop, v.Z)
+	world.doJump(pop)
 end
 
 function Vaulting:Update(fsm, world, data, dt)

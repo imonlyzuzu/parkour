@@ -11,26 +11,35 @@ local function flat(v: Vector3): Vector3
 end
 
 local WallRun = {}
+-- WallRun deliberately hugs the wall (see the toWall offset in Update), so the
+-- FSM's proactive wall-slide must not strip that into-wall component.
+WallRun.SkipWallSlide = true
 
 function WallRun:Enter(world, data)
 	world.setGravity(Config.WallRunGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessSprint
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 
 	local n = flat(data.wallNormal)
 	data.wallNormalFlat = n
 
-	-- Run direction = current motion projected onto the wall plane.
-	local horiz = Vector3.new(data.velocity.X, 0, data.velocity.Z)
-	local along = horiz - n * horiz:Dot(n)
-	if along.Magnitude < 1e-2 then
-		local look = flat(world.hrp.CFrame.LookVector)
-		along = look - n * look:Dot(n)
+	-- Run direction: an explicit one set by a head-on entry, otherwise the
+	-- current motion projected onto the wall plane.
+	if data.wallRunDir then
+		data.wallDir = data.wallRunDir
+		data.wallRunDir = nil
+	else
+		local horiz = Vector3.new(data.velocity.X, 0, data.velocity.Z)
+		local along = horiz - n * horiz:Dot(n)
+		if along.Magnitude < 1e-2 then
+			local look = flat(world.hrp.CFrame.LookVector)
+			along = look - n * look:Dot(n)
+		end
+		data.wallDir = along.Magnitude > 1e-2 and along.Unit or flat(world.hrp.CFrame.LookVector)
 	end
-	data.wallDir = along.Magnitude > 1e-2 and along.Unit or flat(world.hrp.CFrame.LookVector)
 
-	-- Small upward kick so the run arcs rather than instantly sinking.
-	local v = world.hrp.AssemblyLinearVelocity
-	world.hrp.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, 8), v.Z)
+	-- Small upward lift so the run arcs along the wall instead of instantly
+	-- sinking and grounding straight back out.
+	world.doJump(math.max(data.velocity.Y, Config.WallRunLift))
 
 	world.anim:play(data.wallSide == "L" and "WallRunL" or "WallRunR")
 end
@@ -46,16 +55,17 @@ function WallRun:Update(fsm, world, data, dt)
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
 		local launch = data.wallNormalFlat * Config.WallJumpOut + data.wallDir * (Config.WallRunSpeed * 0.5)
 		world.setPlanarVelocity(Vector2.new(launch.X, launch.Z))
-		world.hrp.AssemblyLinearVelocity = Vector3.new(launch.X, Config.WallJumpUp, launch.Z)
+		world.doJump(Config.WallJumpUp)
 		data.lastWallJump = os.clock()
 		fsm:TransitionTo("Airborne")
 		return
 	end
 
-	-- Still next to the wall, holding forward, within the time limit?
+	-- Still next to the wall and holding forward? The wall's length (and letting
+	-- go of W) bounds the run, so there is no separate time cap to stutter on.
 	local toWall = -data.wallNormalFlat
 	local hit = workspace:Raycast(world.hrp.Position, toWall * (Config.WallRayDist + 1), world.raycastParams)
-	if not hit or not Surfaces.allows(hit.Instance, "Wallrun") or not world.isKeyDown(Enum.KeyCode.W) or fsm:TimeInState() >= Config.WallRunMaxTime then
+	if not hit or not Surfaces.allows(hit.Instance, "Wallrun") or not world.isKeyDown(Enum.KeyCode.W) then
 		fsm:TransitionTo("Airborne")
 		return
 	end

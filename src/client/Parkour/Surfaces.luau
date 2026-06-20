@@ -10,7 +10,6 @@ local CollectionService = game:GetService("CollectionService")
 local ACTION_TAG = {
 	Wallrun = "Wallrunnable",
 	Vault = "Vaultable",
-	Cling = "Clingable",
 	Grab = "Grabbable",
 }
 

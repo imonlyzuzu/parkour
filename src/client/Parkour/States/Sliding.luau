@@ -9,7 +9,7 @@ Sliding.Grounded = true
 
 function Sliding:Enter(world, data)
 	world.setGravity(Config.BaseGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessSprint
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 	world.anim:play("Slide", { restart = true })
 
 	local planar = Vector3.new(data.velocity.X, 0, data.velocity.Z)

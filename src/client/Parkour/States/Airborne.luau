@@ -19,7 +19,7 @@ local Airborne = {}
 
 function Airborne:Enter(world, data)
 	world.setGravity(Config.BaseGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessSprint
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 	world.anim:play("Fall")
 end
 
@@ -40,19 +40,8 @@ function Airborne:Update(fsm, world, data, dt)
 			world.doJump(Config.JumpSpeed)
 			return
 		end
-		-- Hard landing -> one fixed, fall-speed-independent pop, then settle.
-		-- Stay airborne for the single bounce arc; the pop's gentle re-landing
-		-- comes back below BounceThreshold and won't re-fire.
-		local fallSpeed = -data.velocity.Y
-		if fallSpeed > Config.BounceThreshold then
-			local av = hrp.AssemblyLinearVelocity
-			hrp.AssemblyLinearVelocity = Vector3.new(av.X, Config.LandingBounce, av.Z)
-			if world.debug then
-				print(string.format("[Parkour] landing bounce (fall=%.0f)", fallSpeed))
-			end
-			return
-		end
-		-- Otherwise resume ground movement, keeping momentum.
+		-- Resume ground movement, keeping momentum. The FSM's grounded snap
+		-- zeroes any residual downward velocity next tick, so this lands flat.
 		local speed = Vector2.new(data.velocity.X, data.velocity.Z).Magnitude
 		fsm:TransitionTo(speed > Config.WalkSpeed + 2 and "Sprinting" or "Walking")
 		return
@@ -85,42 +74,45 @@ function Airborne:Update(fsm, world, data, dt)
 				if dy >= -0.5 and dy <= Config.LedgeReachUp then
 					data.ledgeTopY = top.Position.Y
 					data.ledgeNormal = flat(front.Normal)
-					data.ledgeHitPos = front.Position
-					fsm:TransitionTo("LedgeHang")
+					fsm:TransitionTo("Mantle")
 					return
 				end
 			end
 		end
 	end
 
-	-- Wall interaction: only while carrying horizontal speed and not just
-	-- after a wall jump (so we don't immediately re-stick).
-	local hSpeed = Vector2.new(data.velocity.X, data.velocity.Z).Magnitude
-	if hSpeed >= Config.WallRunMinSpeed and os.clock() - (data.lastWallJump or 0) > Config.WallCooldown then
+	-- Wall-run: start a run when carrying speed roughly PARALLEL along a
+	-- Wallrunnable wall to either side, while holding forward (and not just after a
+	-- wall jump). A head-on approach is deliberately rejected -- you hit the wall and
+	-- slide/fall instead of gliding across it. (No front-wall redirect: that was the
+	-- "jump facing a wall and glide" bug.)
+	local hVel = Vector3.new(data.velocity.X, 0, data.velocity.Z)
+	local hSpeed = hVel.Magnitude
+	if hSpeed >= Config.WallRunMinSpeed and world.isKeyDown(Enum.KeyCode.W)
+		and os.clock() - (data.lastWallJump or 0) > Config.WallCooldown then
 		local pos = hrp.Position
 		local right = flat(hrp.CFrame.RightVector)
-		local fwd = flat(hrp.CFrame.LookVector)
 		local rp = world.raycastParams
+		local heading = hVel / hSpeed
 		local leftHit = workspace:Raycast(pos, -right * Config.WallRayDist, rp)
 		local rightHit = workspace:Raycast(pos, right * Config.WallRayDist, rp)
-		local frontHit = workspace:Raycast(pos, fwd * Config.WallRayDist, rp)
 
-		-- Wall-run only on a Wallrunnable side; prefer whichever side qualifies.
-		local sideHit, side
-		if leftHit and Surfaces.allows(leftHit.Instance, "Wallrun") then
-			sideHit, side = leftHit, "L"
-		elseif rightHit and Surfaces.allows(rightHit.Instance, "Wallrun") then
-			sideHit, side = rightHit, "R"
+		-- A wall qualifies only when we're travelling along it, not into it:
+		-- -heading.normal is the fraction of motion aimed at the wall face.
+		local function parallel(hit)
+			if not hit or not Surfaces.allows(hit.Instance, "Wallrun") then
+				return false
+			end
+			return -heading:Dot(flat(hit.Normal)) <= Config.WallRunMaxInto
 		end
 
-		if world.isKeyDown(Enum.KeyCode.W) and sideHit then
-			data.wallNormal = sideHit.Normal
-			data.wallSide = side
+		if parallel(leftHit) then
+			data.wallNormal, data.wallSide, data.wallRunDir = leftHit.Normal, "L", nil
 			fsm:TransitionTo("WallRun")
 			return
-		elseif frontHit and Surfaces.allows(frontHit.Instance, "Cling") then
-			data.wallNormal = frontHit.Normal
-			fsm:TransitionTo("WallCling")
+		elseif parallel(rightHit) then
+			data.wallNormal, data.wallSide, data.wallRunDir = rightHit.Normal, "R", nil
+			fsm:TransitionTo("WallRun")
 			return
 		end
 	end
@@ -129,7 +121,7 @@ function Airborne:Update(fsm, world, data, dt)
 	local moveDir = world.getMoveVector()
 	if moveDir.Magnitude > 0 then
 		local target = Vector2.new(moveDir.X, moveDir.Z) * Config.AirSpeed
-		local current = world.linearVelocity.PlaneVelocity
+		local current = world.getPlanarVelocity()
 		world.setPlanarVelocity(current:Lerp(target, math.min(1, Config.SprintAccel * Config.AirControl * dt)))
 		world.setFacing(moveDir)
 	end

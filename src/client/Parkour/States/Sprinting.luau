@@ -9,7 +9,7 @@ Sprinting.Grounded = true
 
 function Sprinting:Enter(world)
 	world.setGravity(Config.BaseGravity)
-	world.alignOrientation.Responsiveness = Config.FaceResponsivenessSprint
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 	world.anim:play("Sprint")
 end
 
@@ -27,9 +27,10 @@ function Sprinting:Update(fsm, world, data, dt)
 		return
 	end
 
-	-- Vault over a waist-high obstacle when running into one.
-	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed then
-		local vault = world.detectVault()
+	-- Vault when entering a placed Vaultable trigger volume with enough speed.
+	if Vector2.new(data.velocity.X, data.velocity.Z).Magnitude >= Config.VaultMinSpeed
+		and os.clock() - (data.lastVaultTime or 0) > Config.VaultCooldown then
+		local vault = world.detectVaultTrigger()
 		if vault then
 			data.vault = vault
 			if fsm:TryTransition("Vaulting") then
@@ -51,7 +52,7 @@ function Sprinting:Update(fsm, world, data, dt)
 	end
 
 	local target = Vector2.new(moveDir.X, moveDir.Z) * (Config.SprintSpeed * boost)
-	local current = world.linearVelocity.PlaneVelocity
+	local current = world.getPlanarVelocity()
 	world.setPlanarVelocity(current:Lerp(target, math.min(1, Config.SprintAccel * dt)))
 
 	-- Turn to face the travel direction.

@@ -41,33 +41,32 @@ return {
 	-- Airborne (Task 4)
 	AirControl = 0.45, -- fraction of ground accel available mid-air
 	AirSpeed = 28, -- target horizontal speed under air control
+	WallSlideSkin = 0.5, -- extra reach (studs) past the body when probing ahead for a wall to slide along
 
-	-- Wall run / cling (Task 5)
+	-- Wall run (Task 5)
 	WallRayDist = 3.5, -- side/front probe length for wall detection
-	WallRunGravity = 28, -- reduced gravity while wall running
+	WallRunGravity = 32, -- reduced gravity while wall running (sustain, gentle sink)
+	WallRunLift = 8, -- upward kick on entry so the run arcs instead of sinking out
 	WallRunSpeed = 30, -- forward speed locked along the wall
 	WallRunMinSpeed = 13, -- need at least this horizontal speed to start
-	WallRunMaxTime = 1.6, -- hard cap on a single wall run
+	WallRunMaxInto = 0.5, -- max fraction of motion aimed at the wall face to still start a (parallel) run; above this it's a head-on hit and is rejected
 	WallJumpUp = 42, -- vertical launch off a wall
 	WallJumpOut = 34, -- push away from the wall normal
-	WallClingTime = 0.8, -- how long a head-on cling holds
 	WallCooldown = 0.4, -- ignore walls this long after a wall jump (no re-stick)
 
 	-- Vault / ledge (Task 6)
-	VaultReach = 3, -- forward probe distance for a vaultable obstacle
 	VaultMinSpeed = 8, -- need at least this horizontal speed to vault
 	VaultSpeed = 28, -- forward speed carried through a vault
 	VaultDuration = 0.32, -- time spent driving the vault arc
+	VaultCooldown = 0.5, -- ignore vault triggers this long after a vault (no re-trigger loop)
 	LedgeGrabReach = 3, -- forward distance to detect a grabbable ledge
 	LedgeReachUp = 2.5, -- how far above the HRP a ledge top can be and still grab
-	LedgeShimmySpeed = 6, -- A/D shimmy speed along a ledge
-	MantleUp = 42, -- upward launch when mantling a ledge
-	MantleForward = 16, -- forward nudge over the ledge when mantling
+	MantleForward = 10, -- forward drive speed while mantling onto a ledge
+	MantleClearMargin = 0.8, -- extra height the pop clears above the ledge top
+	MantleDuration = 0.7, -- safety cap on mantle duration (normally ends on landing)
 
 	-- Feel limits & landing (movement-feel pass)
 	TerminalFallSpeed = 85, -- hard cap on downward speed (studs/s)
 	MaxGroundSpeed = 44, -- hard cap on commanded horizontal speed (studs/s)
-	LandingBounce = 10, -- fixed upward pop on a hard landing (studs/s)
-	BounceThreshold = 15, -- min incoming fall speed (studs/s) that triggers a bounce
 	GroundStickDeadzone = 2, -- downward speed (studs/s) below which grounded Y is left alone
 }
