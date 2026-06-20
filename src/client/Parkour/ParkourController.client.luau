@@ -283,7 +283,7 @@ local function setup(character: Model)
 		for part in vaultTriggers do
 			if part.Parent then
 				local rel = part.CFrame:PointToObjectSpace(pos)
-				local h = part.Size * 0.5
+				local h = (part.Size * 0.5) + Vector3.new(1.5, 1.5, 1.5)
 				if math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z then
 					local moving = flatten(world.hrp.AssemblyLinearVelocity)
 					local fwd = if moving.Magnitude > 1e-2 then moving else flatten(world.hrp.CFrame.LookVector)
