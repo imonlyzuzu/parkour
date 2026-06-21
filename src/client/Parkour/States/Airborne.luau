@@ -28,6 +28,14 @@ function Airborne:Update(fsm, world, data, dt)
 
 	-- Touchdown (guard against the rising phase right after a jump).
 	if data.isGrounded and data.velocity.Y <= 0.5 then
+		-- Crouch held through the jump -> chain straight back into a slide
+		-- (b-hop), skipping the roll. Checked before the buffered-Crouch roll
+		-- so a held key always wins over a tap that happened to land in the buffer.
+		if world.isKeyDown(Enum.KeyCode.C) then
+			data.bhopChain = true
+			fsm:TransitionTo("Sliding")
+			return
+		end
 		-- Crouch buffered into the landing -> roll.
 		if fsm:ConsumeBufferedInput("Crouch", Config.JumpBuffer) and fsm:TryTransition("Landing") then
 			return

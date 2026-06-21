@@ -22,6 +22,15 @@ function Sliding:Enter(world, data)
 	end
 	-- Launch the slide at least at SlideSpeed for a satisfying burst.
 	data.slideSpeed = math.max(speed, Config.SlideSpeed)
+
+	-- B-hop chain: a held-Crouch landing re-enters Sliding directly (see
+	-- Airborne:Update). Reward the chain with a flat speed bonus, capped by
+	-- the shared trick-speed ceiling so it can exceed the normal 44 cap.
+	if data.bhopChain then
+		data.slideSpeed = math.min(data.slideSpeed + Config.BhopSpeedBonus, Config.TrickMaxSpeed)
+		data.isTrickSpeed = true
+		data.bhopChain = nil
+	end
 end
 
 function Sliding:Update(fsm, world, data, dt)
