@@ -102,13 +102,42 @@ local function setup(character: Model)
 	-- property is a weighted blend of both parts; the high weights make the character
 	-- dominate, so this holds against any surface without touching course parts.
 	-- Density is preserved from each part, so mass is unchanged.
-	for _, part in character:GetDescendants() do
-		if part:IsA("BasePart") then
-			local cur = part.CurrentPhysicalProperties
-			part.CustomPhysicalProperties =
-				PhysicalProperties.new(cur.Density, 0, 0, 50, 50)
+	-- Limbs/head are non-collidable: this is an R6 rig, so Torso is the only solid
+	-- hitbox against course geometry. Arms/Legs/Head defaulting to CanCollide=true
+	-- let them physically wedge on ledge corners (hanging by an arm, "flying" across
+	-- a part's top edge) independent of the raycast-driven vault/ledge/wallrun
+	-- detection, which never looks at limb contacts at all.
+	local NON_COLLIDABLE_PARTS = {
+		Head = true,
+		["Left Arm"] = true,
+		["Right Arm"] = true,
+		["Left Leg"] = true,
+		["Right Leg"] = true,
+	}
+
+	local function applyPartOverrides()
+		for _, part in character:GetDescendants() do
+			if part:IsA("BasePart") then
+				local cur = part.CurrentPhysicalProperties
+				part.CustomPhysicalProperties =
+					PhysicalProperties.new(cur.Density, 0, 0, 50, 50)
+				if NON_COLLIDABLE_PARTS[part.Name] then
+					part.CanCollide = false
+				end
+			end
 		end
 	end
+	applyPartOverrides()
+
+	-- The avatar-appearance pipeline keeps rebuilding/resetting body parts for a
+	-- window AFTER CharacterAdded fires (it reverts our CanCollide=false above back
+	-- to the engine default) and only settles once CharacterAppearanceLoaded fires.
+	-- Re-assert the overrides once that signal lands so the reset doesn't stick.
+	player.CharacterAppearanceLoaded:Once(function(loadedCharacter)
+		if loadedCharacter == character then
+			applyPartOverrides()
+		end
+	end)
 
 	local totalMass = computeMass(character)
 
@@ -276,8 +305,39 @@ local function setup(character: Model)
 
 	-- Is the HRP inside a placed Vaultable trigger volume? Returns { topY, forward }
 	-- for the Vaulting state, or nil. Direction follows the player's movement (so
-	-- you vault whichever way you're going); pop height is the volume's top surface.
-	-- Containment handles a rotated volume; topY assumes it is placed upright.
+	-- you vault whichever way you're going).
+	-- Containment handles a rotated volume; the trigger only decides WHERE vaulting
+	-- is allowed. topY is measured by raycasting the real solid geometry under the
+	-- trigger rather than trusting the trigger's own authored Size -- a hand-placed
+	-- trigger that doesn't exactly match its obstacle's height would otherwise size
+	-- the pop wrong (over- or under-shooting), landing the player inside the actual
+	-- part instead of on top of it. Obstacles taller than VaultMaxHeight are rejected
+	-- outright so an oversized/mistagged part is never "walked over" -- it stays a
+	-- normal wall.
+	-- AUTHORING: size the trigger to span the WHOLE obstacle (ground to top), not a
+	-- thin band near the top edge. A top-only band requires the HRP to already be
+	-- near the obstacle's height to be seen -- for anything taller than the player,
+	-- that never happens while walking, so they bump into the solid obstacle before
+	-- the trigger ever sees them. A full-height trigger means its (inflated) edge is
+	-- reached before the solid collision is, regardless of obstacle height.
+	-- Is `pos` inside any placed Vaultable trigger's (inflated) bounds? Used by the
+	-- FSM's wall-slide to recognize "this solid surface is the front of a vaultable
+	-- obstacle" even though the SOLID part itself carries no tag (only the separate,
+	-- co-located trigger volume does) -- so vault approaches aren't pre-emptively
+	-- blocked as ordinary walls before the player ever reaches the trigger.
+	function world.isPointNearVaultable(pos: Vector3): boolean
+		for part in vaultTriggers do
+			if part.Parent then
+				local rel = part.CFrame:PointToObjectSpace(pos)
+				local h = (part.Size * 0.5) + Vector3.new(1.5, 1.5, 1.5)
+				if math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
 	function world.detectVaultTrigger()
 		local pos = world.hrp.Position
 		for part in vaultTriggers do
@@ -287,7 +347,21 @@ local function setup(character: Model)
 				if math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z then
 					local moving = flatten(world.hrp.AssemblyLinearVelocity)
 					local fwd = if moving.Magnitude > 1e-2 then moving else flatten(world.hrp.CFrame.LookVector)
-					return { topY = part.Position.Y + part.Size.Y * 0.5, forward = fwd }
+
+					local probeY = part.Position.Y + part.Size.Y * 0.5 + 5
+					local hit = workspace:Raycast(
+						Vector3.new(part.Position.X, probeY, part.Position.Z),
+						Vector3.new(0, -(part.Size.Y + 10), 0),
+						world.raycastParams
+					)
+					local topY = if hit then hit.Position.Y else part.Position.Y + part.Size.Y * 0.5
+
+					local feetY = pos.Y - 3
+					if topY - feetY > Config.VaultMaxHeight then
+						return nil
+					end
+
+					return { topY = topY, forward = fwd }
 				end
 			end
 		end

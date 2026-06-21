@@ -25,6 +25,35 @@ local GROUND_SNAP = 3.3
 -- plus a skin margin, so a wall is caught just before the body would touch it.
 local WALL_PROBE = 2.5
 
+-- The Torso (the only collidable body part) sits with its bottom edge ~1 stud
+-- below the HRP centre, so the single wall-slide ray above only ever sees
+-- obstacles tall enough to reach Torso height. The legs hang non-collidable
+-- (see ParkourController) from there down to the feet (~1-3 studs below HRP
+-- centre) purely so they don't physically wedge on corners -- but that leaves
+-- anything shorter than the Torso (a curb, a low rail, a step) completely
+-- invisible to collision: the Torso never touches it and this ray flies over
+-- it, so the player passes through with the legs visibly clipping through.
+-- A second probe at leg height closes that gap without making the legs
+-- collidable. Wall-likeness (abs(Normal.Y) small) is required so this lower,
+-- near-ground ray doesn't mistake a walkable ramp/stair for a wall.
+local LEG_PROBE_DROP = 2
+local WALL_NORMAL_MAX_Y = 0.4
+
+-- A single centre raycast misses ground narrower than the body (e.g. a 2-stud
+-- beam/ledge): the collidable Torso can be physically resting on it while the
+-- centre point drifts off the edge, leaving the FSM stuck thinking it's
+-- Airborne -- undamped momentum then "slides" the character along forever.
+-- Sample a small footprint of rays instead of one, so any ray landing under
+-- the Torso's actual footprint is enough to register as grounded.
+local GROUND_FOOT_HALF_WIDTH = 0.9
+local GROUND_PROBE_OFFSETS = {
+	Vector3.zero,
+	Vector3.new(GROUND_FOOT_HALF_WIDTH, 0, 0),
+	Vector3.new(-GROUND_FOOT_HALF_WIDTH, 0, 0),
+	Vector3.new(0, 0, GROUND_FOOT_HALF_WIDTH),
+	Vector3.new(0, 0, -GROUND_FOOT_HALF_WIDTH),
+}
+
 function FSM.new(world)
 	local self = setmetatable({}, FSM)
 
@@ -148,12 +177,24 @@ function FSM:_updateSensors()
 	-- Read back the true velocity so states never desync from physics.
 	data.velocity = hrp.AssemblyLinearVelocity
 
-	local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -GROUND_PROBE, 0), world.raycastParams)
-	if hit then
-		data.groundDistance = hrp.Position.Y - hit.Position.Y
-		data.groundNormal = hit.Normal
-		data.groundInstance = hit.Instance
-		data.isGrounded = data.groundDistance <= GROUND_SNAP
+	local bestHit, bestDistance = nil, math.huge
+	for _, offset in GROUND_PROBE_OFFSETS do
+		local origin = hrp.Position + hrp.CFrame:VectorToWorldSpace(offset)
+		local hit = workspace:Raycast(origin, Vector3.new(0, -GROUND_PROBE, 0), world.raycastParams)
+		if hit then
+			local distance = hrp.Position.Y - hit.Position.Y
+			if distance < bestDistance then
+				bestDistance = distance
+				bestHit = hit
+			end
+		end
+	end
+
+	if bestHit then
+		data.groundDistance = bestDistance
+		data.groundNormal = bestHit.Normal
+		data.groundInstance = bestHit.Instance
+		data.isGrounded = bestDistance <= GROUND_SNAP
 	else
 		data.groundDistance = math.huge
 		data.groundNormal = Vector3.yAxis
@@ -200,7 +241,38 @@ function FSM:_applyWallSlide(dt)
 
 	local dir = horiz / speed
 	local reach = WALL_PROBE + speed * dt + Config.WallSlideSkin
-	local hit = workspace:Raycast(world.hrp.Position, dir * reach, world.raycastParams)
+	local castVec = dir * reach
+
+	-- A hit is only a "wall" to slide against if it's vertical-ish AND not the
+	-- front face of a placed Vaultable obstacle -- those are meant to be
+	-- approached freely and handled entirely by the Vaulting trigger/
+	-- SkipWallSlide, not pre-empted here. The solid part itself carries no tag
+	-- (only the separate, co-located trigger volume does), so this checks the
+	-- hit point against the trigger's footprint rather than the hit instance.
+	local function asWall(hit)
+		if not hit then
+			return nil
+		end
+		if math.abs(hit.Normal.Y) > WALL_NORMAL_MAX_Y then
+			return nil
+		end
+		if world.isPointNearVaultable(hit.Position) then
+			return nil
+		end
+		return hit
+	end
+
+	local hit = asWall(workspace:Raycast(world.hrp.Position, castVec, world.raycastParams))
+
+	-- Leg-height probe: catches obstacles too low to ever reach the Torso (the
+	-- only collidable body part), which would otherwise go completely undetected.
+	local legOrigin = world.hrp.Position - Vector3.new(0, LEG_PROBE_DROP, 0)
+	local legHit = asWall(workspace:Raycast(legOrigin, castVec, world.raycastParams))
+
+	if legHit and (not hit or legHit.Distance < hit.Distance) then
+		hit = legHit
+	end
+
 	if not hit then
 		return
 	end

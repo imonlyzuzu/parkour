@@ -56,6 +56,7 @@ return {
 
 	-- Vault / ledge (Task 6)
 	VaultMinSpeed = 8, -- need at least this horizontal speed to vault
+	VaultMaxHeight = 5, -- obstacles taller than this (above the feet) are too big to vault; stays a normal wall
 	VaultSpeed = 28, -- forward speed carried through a vault
 	VaultDuration = 0.32, -- time spent driving the vault arc
 	VaultCooldown = 0.5, -- ignore vault triggers this long after a vault (no re-trigger loop)

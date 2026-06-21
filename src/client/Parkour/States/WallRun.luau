@@ -61,11 +61,11 @@ function WallRun:Update(fsm, world, data, dt)
 		return
 	end
 
-	-- Still next to the wall and holding forward? The wall's length (and letting
-	-- go of W) bounds the run, so there is no separate time cap to stutter on.
+	-- Still next to the wall? Auto-runs forward regardless of input; only the
+	-- wall ending (or curving away) drops you back to Airborne.
 	local toWall = -data.wallNormalFlat
 	local hit = workspace:Raycast(world.hrp.Position, toWall * (Config.WallRayDist + 1), world.raycastParams)
-	if not hit or not Surfaces.allows(hit.Instance, "Wallrun") or not world.isKeyDown(Enum.KeyCode.W) then
+	if not hit or not Surfaces.allows(hit.Instance, "Wallrun") then
 		fsm:TransitionTo("Airborne")
 		return
 	end
