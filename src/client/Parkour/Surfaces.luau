@@ -11,6 +11,7 @@ local ACTION_TAG = {
 	Wallrun = "Wallrunnable",
 	Vault = "Vaultable",
 	Grab = "Grabbable",
+	Grapple = "Grappleable",
 }
 
 local Surfaces = {}
