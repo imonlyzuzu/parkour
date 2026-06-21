@@ -10,6 +10,7 @@
 local RunService = game:GetService("RunService")
 
 local Config = require(script.Parent.Config)
+local Surfaces = require(script.Parent.Surfaces)
 
 local FSM = {}
 FSM.__index = FSM
@@ -325,6 +326,31 @@ function FSM:_applyLimits()
 	world.commandV = Vector3.new(horiz.X, vy, horiz.Y)
 end
 
+-- Cross-cutting grapple trigger: unlike every other transition (which a
+-- state decides for itself), firing the grapple must work from ANY state, so
+-- it's checked here once per tick rather than duplicated into every state
+-- file. A camera-aimed raycast on a buffered "Grapple" input hits a
+-- Grappleable-tagged part -> Swing; a miss just consumes the input.
+function FSM:_checkGrappleTrigger()
+	if not self:ConsumeBufferedInput("Grapple", 0.2) then
+		return false
+	end
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return false
+	end
+	local hit = workspace:Raycast(
+		camera.CFrame.Position,
+		camera.CFrame.LookVector * Config.GrappleMaxRange,
+		self.world.raycastParams
+	)
+	if hit and Surfaces.allows(hit.Instance, "Grapple") then
+		self:TransitionTo("Swing", hit.Position)
+		return true
+	end
+	return false
+end
+
 function FSM:Start(initialState)
 	if initialState then
 		self:TransitionTo(initialState)
@@ -339,7 +365,7 @@ function FSM:Start(initialState)
 		self:_flushOldInputs(0.5)
 		self:_integrateGravity(dt)
 
-		if self.currentState and self.currentState.Update then
+		if not self:_checkGrappleTrigger() and self.currentState and self.currentState.Update then
 			self.currentState:Update(self, self.world, self.data, dt)
 		end
 

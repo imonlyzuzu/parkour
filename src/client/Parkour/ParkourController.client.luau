@@ -384,6 +384,7 @@ local function setup(character: Model)
 	fsm:RegisterState("WallRun", require(States.WallRun))
 	fsm:RegisterState("Vaulting", require(States.Vaulting))
 	fsm:RegisterState("Mantle", require(States.Mantle))
+	fsm:RegisterState("Swing", require(States.Swing))
 
 	fsm:Start("Walking")
 
@@ -406,6 +407,8 @@ UserInputService.InputBegan:Connect(function(input: InputObject, processed: bool
 		activeFSM:BufferInput("Jump")
 	elseif input.KeyCode == Enum.KeyCode.C then
 		activeFSM:BufferInput("Crouch")
+	elseif input.KeyCode == Enum.KeyCode.F then
+		activeFSM:BufferInput("Grapple")
 	end
 end)
 
