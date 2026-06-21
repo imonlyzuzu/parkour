@@ -70,4 +70,20 @@ return {
 	TerminalFallSpeed = 85, -- hard cap on downward speed (studs/s)
 	MaxGroundSpeed = 44, -- hard cap on commanded horizontal speed (studs/s)
 	GroundStickDeadzone = 2, -- downward speed (studs/s) below which grounded Y is left alone
+
+	-- Momentum tech: shared trick-speed ceiling
+	TrickMaxSpeed = 70, -- raised horizontal cap while data.isTrickSpeed is set (bhop/wallbounce/swing)
+
+	-- Momentum tech: slide-jump (b-hop) chaining
+	BhopSpeedBonus = 3, -- flat speed add when a held-Crouch landing re-enters Sliding
+
+	-- Momentum tech: wall bouncing
+	WallBounceWindow = 0.12, -- jump-buffer window for a bounce (tighter than JumpBuffer)
+	WallBounceMinSpeed = 10, -- minimum incoming horizontal speed required to bounce
+	WallBounceBoost = 1.25, -- multiplier applied to the reflected horizontal speed
+	WallBounceUpKick = 12, -- vertical launch speed on a successful bounce
+	WallBounceProbeDist = 3, -- forward raycast reach used to detect an imminent wall touch
+
+	-- Momentum tech: grapple / swing
+	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
 }
