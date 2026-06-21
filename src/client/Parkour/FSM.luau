@@ -73,6 +73,7 @@ function FSM.new(world)
 		stateEnteredAt = 0,
 		keys = {}, -- held keys, maintained by the controller (KeyCode -> true)
 		inputBuffer = {}, -- { { action = string, time = number }, ... }
+		isTrickSpeed = false, -- raised horizontal cap (Config.TrickMaxSpeed) while a momentum-tech move is active
 	}
 
 	self._conn = nil
@@ -302,9 +303,17 @@ function FSM:_applyLimits()
 
 	local vy = math.max(cv.Y, -Config.TerminalFallSpeed)
 
+	-- Trick speed (bhop/wallbounce/swing) decays back to the normal cap on its
+	-- own once horizontal speed drops under it -- no state needs to clear this
+	-- explicitly.
+	if data.isTrickSpeed and Vector2.new(cv.X, cv.Z).Magnitude <= Config.MaxGroundSpeed then
+		data.isTrickSpeed = false
+	end
+	local cap = if data.isTrickSpeed then Config.TrickMaxSpeed else Config.MaxGroundSpeed
+
 	local horiz = Vector2.new(cv.X, cv.Z)
-	if horiz.Magnitude > Config.MaxGroundSpeed then
-		horiz = horiz.Unit * Config.MaxGroundSpeed
+	if horiz.Magnitude > cap then
+		horiz = horiz.Unit * cap
 	end
 
 	if data.isGrounded and self.currentState and self.currentState.Grounded then
