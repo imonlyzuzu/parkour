@@ -17,6 +17,16 @@ end
 
 local Airborne = {}
 
+-- Pure reflection math for wall bouncing, exposed for testing (same
+-- injectable-helper convention as Surfaces._allowsWith). `incoming` and
+-- `normal` are both expected flattened to the XZ plane; `normal` need not be
+-- pre-unit-ed.
+function Airborne._reflectBounce(incoming: Vector3, normal: Vector3): Vector3
+	local n = normal.Unit
+	local reflected = incoming - n * (2 * incoming:Dot(n))
+	return reflected * Config.WallBounceBoost
+end
+
 function Airborne:Enter(world, data)
 	world.setGravity(Config.BaseGravity)
 	world.setTurnSpeed(Config.FaceResponsivenessSprint)
@@ -86,6 +96,34 @@ function Airborne:Update(fsm, world, data, dt)
 					return
 				end
 			end
+		end
+	end
+
+	-- Wall bounce: an imminent wall touch (any solid surface, no tag needed)
+	-- combined with a tightly-timed Jump reflects velocity off the wall
+	-- instead of starting a wall-run. Checked before the wall-run block below
+	-- so the jump timing always wins when both would otherwise qualify.
+	local hVelBounce = Vector3.new(data.velocity.X, 0, data.velocity.Z)
+	local hSpeedBounce = hVelBounce.Magnitude
+	if hSpeedBounce >= Config.WallBounceMinSpeed then
+		local bounceHit = workspace:Raycast(
+			hrp.Position,
+			hVelBounce.Unit * Config.WallBounceProbeDist,
+			world.raycastParams
+		)
+		if bounceHit and fsm:ConsumeBufferedInput("Jump", Config.WallBounceWindow) then
+			local reflected = Airborne._reflectBounce(hVelBounce, flat(bounceHit.Normal))
+			local capped = if reflected.Magnitude > Config.TrickMaxSpeed
+				then reflected.Unit * Config.TrickMaxSpeed
+				else reflected
+			world.setPlanarVelocity(Vector2.new(capped.X, capped.Z))
+			world.doJump(Config.WallBounceUpKick)
+			data.isTrickSpeed = true
+			data.lastWallJump = os.clock()
+			if world.debug then
+				print(string.format("[Parkour] wall bounce (spd=%.1f)", capped.Magnitude))
+			end
+			return
 		end
 	end
 
