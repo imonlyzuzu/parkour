@@ -342,7 +342,7 @@ function FSM:_checkGrappleTrigger()
 	local hit = workspace:Raycast(
 		camera.CFrame.Position,
 		camera.CFrame.LookVector * Config.GrappleMaxRange,
-		self.world.raycastParams
+		self.world.raycastParamsAnyCollide
 	)
 	if hit and Surfaces.allows(hit.Instance, "Grapple") then
 		self:TransitionTo("Swing", hit.Position)

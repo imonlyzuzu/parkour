@@ -184,6 +184,15 @@ local function setup(character: Model)
 	raycastParams.IgnoreWater = true
 	raycastParams.RespectCanCollide = true
 
+	-- Same character filter, but sees CanCollide=false parts too: grapple anchors
+	-- are deliberately non-collidable markers (they must never block movement),
+	-- so the camera-aimed grapple raycast needs to hit them anyway.
+	local raycastParamsAnyCollide = RaycastParams.new()
+	raycastParamsAnyCollide.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParamsAnyCollide.FilterDescendantsInstances = { character }
+	raycastParamsAnyCollide.IgnoreWater = true
+	raycastParamsAnyCollide.RespectCanCollide = false
+
 	local world = {
 		player = player,
 		character = character,
@@ -193,6 +202,7 @@ local function setup(character: Model)
 		linearVelocity = linearVelocity,
 		alignOrientation = alignOrientation,
 		raycastParams = raycastParams,
+		raycastParamsAnyCollide = raycastParamsAnyCollide,
 		totalMass = totalMass,
 		-- The single owned target velocity (world space). States set XZ via
 		-- setPlanarVelocity / Y via doJump; the FSM integrates gravity into Y,
