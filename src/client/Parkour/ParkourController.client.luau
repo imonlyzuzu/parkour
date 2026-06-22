@@ -61,6 +61,13 @@ local function setup(character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	local hrp = character:WaitForChild("HumanoidRootPart") :: BasePart
 	local rootJoint = hrp:WaitForChild("RootJoint") :: Motor6D
+	-- The rest-pose offset between HRP and Torso (an R6 quirk: a -90 degree
+	-- rotation, not identity). The cosmetic lean is composed on TOP of this via
+	-- C0, not .Transform: every keyframe in the project's run/walk/idle clips
+	-- explicitly poses HumanoidRootPart at identity, so the Animator overwrites
+	-- .Transform back to flat every frame it's driving an animation -- C0/C1 are
+	-- the joint's static rest pose and the Animator never touches them.
+	local rootJointBaseC0 = rootJoint.C0
 
 	-- Lock the Humanoid out of its own locomotion / balancing.
 	for _, stateType in {
@@ -218,9 +225,10 @@ local function setup(character: Model)
 		targetFacing = flatten(hrp.CFrame.LookVector),
 		turnSpeed = Config.FaceResponsivenessWalk,
 		debug = Config.Debug,
-		-- Cosmetic ramp lean: the eased rotation offset currently written to
-		-- rootJoint.Transform. Identity (CFrame.new()) means "flat/upright".
+		-- Cosmetic ramp lean: composed onto rootJointBaseC0 each tick (see its
+		-- declaration above). Identity (CFrame.new()) means "flat/upright".
 		rootJoint = rootJoint,
+		rootJointBaseC0 = rootJointBaseC0,
 		groundTiltCFrame = CFrame.new(),
 	}
 
@@ -280,9 +288,9 @@ local function setup(character: Model)
 	-- upright Y axis to match groundNormal while keeping the current facing
 	-- direction, expresses it as a rotation RELATIVE to the rig's actual
 	-- (always-upright) orientation, caps the magnitude, eases toward it, and
-	-- writes the result to RootJoint.Transform -- a purely visual offset the
-	-- Animator system already uses for IK, sitting below AlignOrientation and
-	-- collision entirely. Called once per tick by the FSM for Grounded states.
+	-- composes the result onto RootJoint.C0 (see rootJointBaseC0 above) --
+	-- sitting below AlignOrientation and collision entirely, and immune to the
+	-- Animator overwriting it. Called once per tick by the FSM for Grounded states.
 	function world.setGroundTilt(groundNormal: Vector3, dt: number)
 		local up = groundNormal.Unit
 		local forward = world.facingDir - up * world.facingDir:Dot(up)
@@ -303,13 +311,13 @@ local function setup(character: Model)
 		end
 
 		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(target, math.min(1, Config.SlopeTiltSpeed * dt))
-		world.rootJoint.Transform = world.groundTiltCFrame
+		world.rootJoint.C0 = world.rootJointBaseC0 * world.groundTiltCFrame
 	end
 
 	-- Eases the ramp lean back to flat/upright (called for non-Grounded states).
 	function world.clearGroundTilt(dt: number)
 		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(CFrame.new(), math.min(1, Config.SlopeTiltSpeed * dt))
-		world.rootJoint.Transform = world.groundTiltCFrame
+		world.rootJoint.C0 = world.rootJointBaseC0 * world.groundTiltCFrame
 	end
 
 	-- Replace the owned vertical velocity with `speed` (jumps / launches). The FSM
