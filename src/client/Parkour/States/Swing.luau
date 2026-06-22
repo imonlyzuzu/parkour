@@ -25,6 +25,12 @@ function Swing:Update(fsm, world, data, dt)
 	local hrp = world.hrp
 	local anchor = data.anchorPos
 
+	-- Raise the FSM's horizontal speed cap for the whole swing, not just on
+	-- release: a pendulum's speed at the bottom of its arc routinely exceeds
+	-- the 44 stud/s ground cap, and clamping it mid-swing bleeds energy
+	-- asymmetrically (only the fast point gets clipped).
+	data.isTrickSpeed = true
+
 	local r = hrp.Position - anchor
 	if r.Magnitude < 1e-3 then
 		-- Degenerate (sitting on the anchor): nothing to swing from.
@@ -52,7 +58,6 @@ function Swing:Update(fsm, world, data, dt)
 	-- Release: jump off with the current swing velocity, carried as-is -- the
 	-- arc itself is the momentum redirect, no added launch bonus.
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		data.isTrickSpeed = true
 		fsm:TransitionTo("Airborne")
 		return
 	end
