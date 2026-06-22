@@ -60,6 +60,7 @@ end
 local function setup(character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	local hrp = character:WaitForChild("HumanoidRootPart") :: BasePart
+	local rootJoint = hrp:WaitForChild("RootJoint") :: Motor6D
 
 	-- Lock the Humanoid out of its own locomotion / balancing.
 	for _, stateType in {
@@ -217,6 +218,10 @@ local function setup(character: Model)
 		targetFacing = flatten(hrp.CFrame.LookVector),
 		turnSpeed = Config.FaceResponsivenessWalk,
 		debug = Config.Debug,
+		-- Cosmetic ramp lean: the eased rotation offset currently written to
+		-- rootJoint.Transform. Identity (CFrame.new()) means "flat/upright".
+		rootJoint = rootJoint,
+		groundTiltCFrame = CFrame.new(),
 	}
 
 	-- Set the gravity magnitude (studs/s^2 downward) the FSM integrates into Y.
