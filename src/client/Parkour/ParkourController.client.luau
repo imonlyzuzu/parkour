@@ -61,6 +61,9 @@ local function setup(character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	local hrp = character:WaitForChild("HumanoidRootPart") :: BasePart
 	local rootJoint = hrp:WaitForChild("RootJoint") :: Motor6D
+	local torso = character:WaitForChild("Torso") :: BasePart
+	local leftHip = torso:WaitForChild("Left Hip") :: Motor6D
+	local rightHip = torso:WaitForChild("Right Hip") :: Motor6D
 	-- The rest-pose offset between HRP and Torso (an R6 quirk: a -90 degree
 	-- rotation, not identity). The cosmetic lean is composed on TOP of this via
 	-- C0, not .Transform: every keyframe in the project's run/walk/idle clips
@@ -68,6 +71,14 @@ local function setup(character: Model)
 	-- .Transform back to flat every frame it's driving an animation -- C0/C1 are
 	-- the joint's static rest pose and the Animator never touches them.
 	local rootJointBaseC0 = rootJoint.C0
+	local leftHipBaseC0 = leftHip.C0
+	local rightHipBaseC0 = rightHip.C0
+	-- Motor6D enforces Part0.CFrame * C0 == Part1.CFrame * C1, i.e.
+	-- Part1.CFrame = Part0.CFrame * C0 * C1:Inverse() -- C1 is NOT identity here,
+	-- so a rotation inserted into the parent joint's C0 reaches the child as a
+	-- CONJUGATE of itself by C1, not the rotation itself. The hip counter-lean
+	-- below needs this rotation-only C1 to correctly cancel that conjugate.
+	local rootJointC1Rot = rootJoint.C1 - rootJoint.C1.Position
 
 	-- Lock the Humanoid out of its own locomotion / balancing.
 	for _, stateType in {
@@ -227,8 +238,16 @@ local function setup(character: Model)
 		debug = Config.Debug,
 		-- Cosmetic ramp lean: composed onto rootJointBaseC0 each tick (see its
 		-- declaration above). Identity (CFrame.new()) means "flat/upright".
+		-- leftHip/rightHip get the INVERSE composed onto their own base C0, so
+		-- the legs counter-rotate back toward world-vertical instead of swinging
+		-- forward with the torso and plowing into a downhill slope.
 		rootJoint = rootJoint,
 		rootJointBaseC0 = rootJointBaseC0,
+		rootJointC1Rot = rootJointC1Rot,
+		leftHip = leftHip,
+		leftHipBaseC0 = leftHipBaseC0,
+		rightHip = rightHip,
+		rightHipBaseC0 = rightHipBaseC0,
 		groundTiltCFrame = CFrame.new(),
 	}
 
@@ -311,13 +330,29 @@ local function setup(character: Model)
 		end
 
 		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(target, math.min(1, Config.SlopeTiltSpeed * dt))
-		world.rootJoint.C0 = world.rootJointBaseC0 * world.groundTiltCFrame
+		world._writeGroundTilt()
 	end
 
 	-- Eases the ramp lean back to flat/upright (called for non-Grounded states).
 	function world.clearGroundTilt(dt: number)
 		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(CFrame.new(), math.min(1, Config.SlopeTiltSpeed * dt))
+		world._writeGroundTilt()
+	end
+
+	-- Writes the current eased lean to the rig: the torso gets it directly.
+	-- The world-space rotation this actually adds to the torso is the
+	-- CONJUGATE of groundTiltCFrame by rootJointC1Rot (Motor6D's Part1.CFrame =
+	-- Part0.CFrame * C0 * C1:Inverse() -- C1 is not identity here, so a
+	-- rotation inserted into C0 reaches the child rotated by C1, not as-is).
+	-- The legs hang off that now-rotated torso frame, so cancelling it at the
+	-- hip (to keep legs world-vertical instead of swinging into a downhill
+	-- slope) means countering THAT conjugate, not groundTiltCFrame itself.
+	function world._writeGroundTilt()
 		world.rootJoint.C0 = world.rootJointBaseC0 * world.groundTiltCFrame
+		local appliedToTorso = world.rootJointC1Rot * world.groundTiltCFrame * world.rootJointC1Rot:Inverse()
+		local counter = appliedToTorso:Inverse()
+		world.leftHip.C0 = counter * world.leftHipBaseC0
+		world.rightHip.C0 = counter * world.rightHipBaseC0
 	end
 
 	-- Replace the owned vertical velocity with `speed` (jumps / launches). The FSM
