@@ -89,6 +89,26 @@ the existing `groundNormal`.
   `Landing.luau` themselves — same centralization pattern as the torso
   lean.
 
+## Animation interaction
+
+Walk/Sprint/etc. animation clips drive the leg swing via each hip
+`Motor6D`'s `.Transform` property every frame; `.C0` is the joint's static
+rest pose, which the Animator never touches (same relationship the
+existing torso lean already relies on — see the comment on
+`rootJointBaseC0` in `ParkourController.client.luau`). Motor6D composes
+them as `Part1.CFrame = Part0.CFrame * C0 * Transform * C1:Inverse()`, so
+writing the per-foot lean into `C0` only changes the *rest frame* the
+animated swing plays on top of — the walk/run gait keeps animating
+normally, just tilted to match the foot's surface instead of vertical.
+
+This is the same mechanism the existing torso-lean/hip-counter-rotation
+already uses successfully with these same clips (see the "counter-rotate
+hips" fix). The one new risk: unlike that uniform counter-rotation, the two
+legs can now carry *different* lean angles from each other (e.g. one foot
+on a rock, one on flat ground), so a fast gait could look slightly
+asymmetric where it never did before. `FootIKMaxAngle` and `FootIKSpeed`
+are the levers to keep this subtle; no animation changes are needed.
+
 ## Edge cases
 
 - **One foot off an edge / no hit:** that leg's target falls back to
