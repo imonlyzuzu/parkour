@@ -276,6 +276,42 @@ local function setup(character: Model)
 		world.alignOrientation.CFrame = CFrame.lookAlong(Vector3.zero, world.facingDir)
 	end
 
+	-- Cosmetic-only ramp lean. Builds a target orientation that tilts the
+	-- upright Y axis to match groundNormal while keeping the current facing
+	-- direction, expresses it as a rotation RELATIVE to the rig's actual
+	-- (always-upright) orientation, caps the magnitude, eases toward it, and
+	-- writes the result to RootJoint.Transform -- a purely visual offset the
+	-- Animator system already uses for IK, sitting below AlignOrientation and
+	-- collision entirely. Called once per tick by the FSM for Grounded states.
+	function world.setGroundTilt(groundNormal: Vector3, dt: number)
+		local up = groundNormal.Unit
+		local forward = world.facingDir - up * world.facingDir:Dot(up)
+		if forward.Magnitude < 1e-3 then
+			forward = Vector3.new(world.facingDir.X, 0, world.facingDir.Z)
+		end
+		forward = forward.Unit
+		local right = forward:Cross(up)
+
+		local targetWorld = CFrame.fromMatrix(Vector3.zero, right, up)
+		local hrpRot = world.hrp.CFrame - world.hrp.CFrame.Position
+		local target = hrpRot:Inverse() * targetWorld
+
+		local _, angle = target:ToAxisAngle()
+		local maxAngle = math.rad(Config.SlopeTiltMaxAngle)
+		if angle > maxAngle then
+			target = CFrame.new():Lerp(target, maxAngle / angle)
+		end
+
+		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(target, math.min(1, Config.SlopeTiltSpeed * dt))
+		world.rootJoint.Transform = world.groundTiltCFrame
+	end
+
+	-- Eases the ramp lean back to flat/upright (called for non-Grounded states).
+	function world.clearGroundTilt(dt: number)
+		world.groundTiltCFrame = world.groundTiltCFrame:Lerp(CFrame.new(), math.min(1, Config.SlopeTiltSpeed * dt))
+		world.rootJoint.Transform = world.groundTiltCFrame
+	end
+
 	-- Replace the owned vertical velocity with `speed` (jumps / launches). The FSM
 	-- flushes it to the constraint this same tick, overriding gravity integration.
 	function world.doJump(speed: number)
