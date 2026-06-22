@@ -16,6 +16,13 @@ local function flat(v: Vector3): Vector3
 end
 
 local Airborne = {}
+-- The FSM's proactive wall-slide kills the "into wall" velocity component the
+-- moment a solid wall is within its probe reach (~3.5 studs) -- before the
+-- wall-bounce check below (3-stud reach) ever sees a head-on approach still
+-- carrying speed. Same conflict Swing.luau documents for the same reason:
+-- the state's own physics/probes already handle the wall, so the FSM's
+-- generic slide must not pre-empt it.
+Airborne.SkipWallSlide = true
 
 -- Pure reflection math for wall bouncing, exposed for testing (same
 -- injectable-helper convention as Surfaces._allowsWith). `incoming` and
