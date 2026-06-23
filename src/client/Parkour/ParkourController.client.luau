@@ -5,8 +5,10 @@
 --   * Humanoid is locked to the Physics state (no default walk/jump/fall).
 --   * A LinearVelocity (Vector mode) drives the ENTIRE velocity vector; gravity is
 --     integrated in code by the FSM (no VectorForce) so jump arcs are tunable.
---   * A RIGID AlignOrientation keeps the rig perfectly upright (it can never tilt
---     on contact); yaw is eased in code so turning still feels smooth.
+--   * A RIGID AlignOrientation tracks a target combining eased yaw with an up-axis
+--     eased toward the ground normal (tilting the rig to match slopes while
+--     grounded, upright otherwise); RIGID means contact torque can never perturb
+--     that target.
 -- A Heartbeat FSM then delegates per-frame movement to the active state.
 
 local Players = game:GetService("Players")
@@ -160,11 +162,12 @@ local function setup(character: Model)
 	linearVelocity.VectorVelocity = Vector3.zero
 	linearVelocity.Parent = hrp
 
-	-- Upright lock + yaw control, instead of setting HRP.CFrame each frame.
-	-- RIGID: the rig snaps to the target orientation every physics step, so a
-	-- collision torque can never tilt it. The target is always built from a
-	-- flattened (upright) direction, and we ease the yaw of that target in code
-	-- (world.updateFacing) so turning stays smooth without ever leaning.
+	-- Orientation control, instead of setting HRP.CFrame each frame. The target is
+	-- built in world.updateFacing from the eased facing (yaw) and an eased up-axis
+	-- that follows the ground normal while grounded (vertical otherwise), so the rig
+	-- tilts to match slopes when planted and stands upright in the air. RIGID: the
+	-- rig snaps to that target every physics step, so collision torque can never
+	-- perturb it.
 	local alignOrientation = Instance.new("AlignOrientation")
 	alignOrientation.Name = "ParkourOrientation"
 	alignOrientation.Attachment0 = rootAttachment
@@ -210,9 +213,9 @@ local function setup(character: Model)
 		commandV = Vector3.zero,
 		-- Live gravity magnitude (studs/s^2 downward) for the FSM's integration.
 		gravity = Config.BaseGravity,
-		-- Orientation easing: facingDir eases toward targetFacing each tick at
-		-- turnSpeed; the rigid AlignOrientation then tracks facingDir exactly
-		-- (always upright, so the rig can never tilt on contact).
+		-- Facing easing: facingDir eases toward targetFacing each tick at turnSpeed;
+		-- updateFacing combines it with the eased up-axis (below) into the rigid
+		-- AlignOrientation target.
 		facingDir = flatten(hrp.CFrame.LookVector),
 		targetFacing = flatten(hrp.CFrame.LookVector),
 		turnSpeed = Config.FaceResponsivenessWalk,
@@ -247,9 +250,9 @@ local function setup(character: Model)
 		world.linearVelocity.VectorVelocity = world.commandV
 	end
 
-	-- Aim the character along a (flattened) direction. Sets the easing TARGET only;
-	-- the orientation eases toward it in updateFacing so turns stay smooth while the
-	-- rigid AlignOrientation keeps the rig perfectly upright.
+	-- Aim the character along a (flattened) direction. Sets the facing easing TARGET
+	-- only; updateFacing eases the orientation toward it (and tilts the up-axis to
+	-- the slope while grounded) so turns stay smooth.
 	function world.setFacing(direction: Vector3)
 		local flat = flatten(direction)
 		if flat.Magnitude < 1e-3 then
