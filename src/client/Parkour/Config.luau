@@ -89,4 +89,5 @@ return {
 
 	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
 	SlopeTiltSpeed = 10, -- easing rate toward the slope/upright orientation (role of FaceResponsivenessWalk)
+	MaxWalkableSlopeAngle = 50, -- ground steeper than this (degrees) stops counting as ground; it acts as a wall (no grounding, no tilt)
 }

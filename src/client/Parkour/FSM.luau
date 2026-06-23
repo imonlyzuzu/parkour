@@ -188,13 +188,24 @@ function FSM:_updateSensors()
 	-- Read back the true velocity so states never desync from physics.
 	data.velocity = hrp.AssemblyLinearVelocity
 
-	local bestHit, bestDistance = nil, math.huge
+	-- Sample the footprint twice over: the closest WALKABLE hit (a grounding
+	-- candidate) and, separately, the closest hit of ANY steepness so a too-steep
+	-- face is still exposed via groundNormal for observability even when it can't
+	-- ground us. Selecting the closest *walkable* ray keeps a steep edge-ray at a
+	-- floor/wall junction from vetoing the good floor underfoot.
+	local minWalkableNormalY = math.cos(math.rad(Config.MaxWalkableSlopeAngle))
+	local bestHit, bestDistance = nil, math.huge -- closest walkable
+	local anyHit, anyDistance = nil, math.huge -- closest of any slope
 	for _, offset in GROUND_PROBE_OFFSETS do
 		local origin = hrp.Position + hrp.CFrame:VectorToWorldSpace(offset)
 		local hit = workspace:Raycast(origin, Vector3.new(0, -GROUND_PROBE, 0), world.raycastParams)
 		if hit then
 			local distance = hrp.Position.Y - hit.Position.Y
-			if distance < bestDistance then
+			if distance < anyDistance then
+				anyDistance = distance
+				anyHit = hit
+			end
+			if hit.Normal.Y >= minWalkableNormalY and distance < bestDistance then
 				bestDistance = distance
 				bestHit = hit
 			end
@@ -202,10 +213,20 @@ function FSM:_updateSensors()
 	end
 
 	if bestHit then
-		data.groundDistance = bestDistance
+		-- Distance measured ALONG the surface normal (perpendicular), so the snap
+		-- is tilt-invariant: ~3 (body length) whenever the feet are on the surface
+		-- at any tilt. Flat ground (Normal.Y = 1) reduces to the old vertical check.
+		local perpDist = bestHit.Normal.Y * bestDistance
+		data.groundDistance = perpDist
 		data.groundNormal = bestHit.Normal
 		data.groundInstance = bestHit.Instance
-		data.isGrounded = bestDistance <= GROUND_SNAP
+		data.isGrounded = perpDist <= GROUND_SNAP
+	elseif anyHit then
+		-- Only a too-steep surface nearby: expose its normal but do not ground.
+		data.groundDistance = anyHit.Normal.Y * anyDistance
+		data.groundNormal = anyHit.Normal
+		data.groundInstance = anyHit.Instance
+		data.isGrounded = false
 	else
 		data.groundDistance = math.huge
 		data.groundNormal = Vector3.yAxis
