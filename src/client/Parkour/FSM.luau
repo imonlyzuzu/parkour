@@ -414,6 +414,14 @@ function FSM:Start(initialState)
 		self:_applyLimits()
 		self:_applySlopeMovement()
 		self.world.flush()
+
+		-- Tilt the rig to the ground while planted; stand upright otherwise.
+		-- updateFacing eases world.upDir toward this target each tick.
+		if self.currentState and self.currentState.Grounded and self.data.isGrounded then
+			self.world.targetUp = self.data.groundNormal
+		else
+			self.world.targetUp = Vector3.yAxis
+		end
 		self.world.updateFacing(dt)
 	end)
 end

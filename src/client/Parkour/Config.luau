@@ -87,6 +87,6 @@ return {
 	-- Momentum tech: grapple / swing
 	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
 
-	-- Cosmetic: slope tilt (visual-only lean to match ramp angle while grounded)
-	SlopeTiltSpeed = 10, -- easing rate toward the target lean (same role as FaceResponsivenessWalk)
+	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
+	SlopeTiltSpeed = 10, -- easing rate toward the slope/upright orientation (role of FaceResponsivenessWalk)
 }

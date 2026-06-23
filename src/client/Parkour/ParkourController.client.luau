@@ -216,6 +216,11 @@ local function setup(character: Model)
 		facingDir = flatten(hrp.CFrame.LookVector),
 		targetFacing = flatten(hrp.CFrame.LookVector),
 		turnSpeed = Config.FaceResponsivenessWalk,
+		-- Slope tilt easing: upDir eases toward targetUp (the ground normal while
+		-- grounded, +Y otherwise) each tick; updateFacing builds the rig's real
+		-- orientation from facingDir + upDir. Spawn upright, so both start +Y.
+		upDir = Vector3.yAxis,
+		targetUp = Vector3.yAxis,
 		debug = Config.Debug,
 	}
 
@@ -262,13 +267,31 @@ local function setup(character: Model)
 	-- Ease facingDir toward targetFacing and write the rigid orientation. Called by
 	-- the FSM once per tick.
 	function world.updateFacing(dt: number)
-		local eased = world.facingDir:Lerp(world.targetFacing, math.min(1, world.turnSpeed * dt))
-		if eased.Magnitude < 1e-3 then
+		local easedFacing = world.facingDir:Lerp(world.targetFacing, math.min(1, world.turnSpeed * dt))
+		if easedFacing.Magnitude < 1e-3 then
 			-- near-opposite vectors pass through zero on Lerp; snap instead.
-			eased = world.targetFacing
+			easedFacing = world.targetFacing
 		end
-		world.facingDir = eased.Unit
-		world.alignOrientation.CFrame = CFrame.lookAlong(Vector3.zero, world.facingDir)
+		world.facingDir = easedFacing.Unit
+
+		-- Ease the up axis toward targetUp (set by the FSM each tick: the ground
+		-- normal while grounded, +Y otherwise) so the whole rig tilts to match the
+		-- slope and stands back up in the air. Same near-zero pass-through guard.
+		local easedUp = world.upDir:Lerp(world.targetUp, math.min(1, Config.SlopeTiltSpeed * dt))
+		world.upDir = if easedUp.Magnitude > 1e-3 then easedUp.Unit else world.targetUp
+
+		-- Build the oriented target: facing projected onto the tilt plane is the
+		-- look direction, the eased up is the up axis. CFrame.fromMatrix(pos, right,
+		-- up) yields LookVector = forward, UpVector = up. AlignOrientation stays
+		-- RIGID, so it snaps to THIS target -- contact torque still can't tilt us.
+		local up = world.upDir
+		local forward = world.facingDir - up * world.facingDir:Dot(up)
+		if forward.Magnitude < 1e-3 then
+			forward = world.facingDir -- degenerate: facing nearly parallel to up
+		end
+		forward = forward.Unit
+		local right = forward:Cross(up)
+		world.alignOrientation.CFrame = CFrame.fromMatrix(Vector3.zero, right, up)
 	end
 
 	-- Replace the owned vertical velocity with `speed` (jumps / launches). The FSM
