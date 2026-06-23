@@ -55,6 +55,15 @@ local GROUND_PROBE_OFFSETS = {
 	Vector3.new(0, 0, -GROUND_FOOT_HALF_WIDTH),
 }
 
+-- Slope-follow projection guards. While planted on a slope, grounded movement
+-- is re-projected onto the ground plane (see FSM:_applySlopeMovement) so the
+-- body travels ALONG the ramp instead of horizontally into it. Above
+-- SLOPE_FLAT_THRESHOLD the ground normal counts as flat and the projection is
+-- skipped (it would be an identity no-op). Below SLOPE_MIN_SPEED of commanded
+-- horizontal speed there is nothing to redirect (standing still stays flat).
+local SLOPE_FLAT_THRESHOLD = 0.999
+local SLOPE_MIN_SPEED = 1e-3
+
 function FSM.new(world)
 	local self = setmetatable({}, FSM)
 
@@ -326,6 +335,38 @@ function FSM:_applyLimits()
 	world.commandV = Vector3.new(horiz.X, vy, horiz.Y)
 end
 
+-- Slope-follow: while a Grounded state is actually touching ground, re-project
+-- the commanded horizontal velocity onto the ground plane so the body travels
+-- ALONG the slope surface (Y becomes positive uphill, negative downhill) at the
+-- commanded speed. Without this, grounded Y is pinned to 0 (see _integrateGravity)
+-- and the body is driven horizontally INTO every ramp and stalls. Runs as the
+-- last step before flush -- AFTER _applyLimits, so the horizontal speed cap is
+-- applied first and the grounded snap-to-zero can't clobber the intentional
+-- downhill Y. Flat ground is a no-op (normal = +Y -> projection is identity).
+-- Jumps are unaffected: a jump transitions to a non-Grounded state within the
+-- state's Update, so by flush-time this gate is false and the jump's Y survives.
+function FSM:_applySlopeMovement()
+	if not (self.currentState and self.currentState.Grounded and self.data.isGrounded) then
+		return
+	end
+	local n = self.data.groundNormal
+	if n.Y > SLOPE_FLAT_THRESHOLD then
+		return -- flat (or near-flat) ground: projection is identity
+	end
+	local world = self.world
+	local cv = world.commandV
+	local horiz = Vector3.new(cv.X, 0, cv.Z)
+	local speed = horiz.Magnitude
+	if speed < SLOPE_MIN_SPEED then
+		return -- standing still: stay flat
+	end
+	local slope = horiz - n * horiz:Dot(n)
+	if slope.Magnitude < 1e-3 then
+		return -- degenerate normal (shouldn't happen for a walkable surface)
+	end
+	world.commandV = slope.Unit * speed
+end
+
 -- Cross-cutting grapple trigger: unlike every other transition (which a
 -- state decides for itself), firing the grapple must work from ANY state, so
 -- it's checked here once per tick rather than duplicated into every state
@@ -371,6 +412,7 @@ function FSM:Start(initialState)
 
 		self:_applyWallSlide(dt)
 		self:_applyLimits()
+		self:_applySlopeMovement()
 		self.world.flush()
 		self.world.updateFacing(dt)
 
