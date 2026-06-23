@@ -415,12 +415,6 @@ function FSM:Start(initialState)
 		self:_applySlopeMovement()
 		self.world.flush()
 		self.world.updateFacing(dt)
-
-		if self.currentState and self.currentState.Grounded then
-			self.world.setGroundTilt(self.data.groundNormal, dt)
-		else
-			self.world.clearGroundTilt(dt)
-		end
 	end)
 end
 

@@ -89,5 +89,4 @@ return {
 
 	-- Cosmetic: slope tilt (visual-only lean to match ramp angle while grounded)
 	SlopeTiltSpeed = 10, -- easing rate toward the target lean (same role as FaceResponsivenessWalk)
-	SlopeTiltMaxAngle = 35, -- hard cap (degrees) on lean magnitude
 }
