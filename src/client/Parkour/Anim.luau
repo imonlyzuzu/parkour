@@ -25,6 +25,8 @@ local CONFIG = {
 	WallRunR = { kfs = "WallRunR", priority = Enum.AnimationPriority.Action },
 	Grab = { kfs = "Grab", priority = Enum.AnimationPriority.Action },
 	Climb = { kfs = "Climb", priority = Enum.AnimationPriority.Action },
+	LedgeHold = { kfs = "LedgeHold", priority = Enum.AnimationPriority.Action },
+	LedgeClimb = { kfs = "LedgeClimb", priority = Enum.AnimationPriority.Action, looped = false },
 	Crouch = { kfs = "Crouch", priority = Enum.AnimationPriority.Movement },
 }
 
