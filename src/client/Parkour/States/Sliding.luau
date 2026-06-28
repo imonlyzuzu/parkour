@@ -13,7 +13,7 @@ function Sliding:Enter(world, data)
 
 	local track = world.anim:play("SlideStart", { restart = true })
 	if track then
-		track.Stopped:Connect(function()
+		track.Stopped:Once(function()
 			if world.anim.current == "SlideStart" then
 				world.anim:play("SlideLoop")
 			end
