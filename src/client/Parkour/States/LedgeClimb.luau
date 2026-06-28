@@ -1,7 +1,6 @@
 -- LedgeClimb: pressing Space while hanging on a ledge (LedgeHold) climbs up.
 -- Pops up to clear the lip and drives forward onto the ledge top in one motion,
--- then flows back into running. Mechanically the old Mantle, re-skinned to the
--- LedgeClimb clip.
+-- then flows back into running, playing the LedgeClimb clip.
 
 local Config = require(script.Parent.Parent.Config)
 

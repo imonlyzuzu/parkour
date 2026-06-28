@@ -258,7 +258,7 @@ end
 -- it instead of driving into it. Done BEFORE the velocity is flushed, so the
 -- constraint never fights a wall (the old reactive approach corrected a tick late
 -- and let contact forces pin the player). Skipped for states that manage their own
--- surface contact (WallRun hugs a wall; Vaulting/Mantle drive over geometry).
+-- surface contact (WallRun hugs a wall; Vaulting/LedgeClimb drive over geometry).
 function FSM:_applyWallSlide(dt)
 	if self.currentState and self.currentState.SkipWallSlide then
 		return
@@ -325,7 +325,7 @@ end
 -- terminal fall speed, max commanded ground speed, and a grounded snap that zeroes
 -- leftover downward speed on the tick a fall transitions into a Grounded state, so
 -- landings plant flat instead of driving a frame of velocity into the floor.
--- Airborne/WallRun/Vaulting/Mantle are intentionally NOT Grounded, so the snap
+-- Airborne/WallRun/Vaulting/LedgeHold/LedgeClimb are intentionally NOT Grounded, so the snap
 -- never fires for them (e.g. the Airborne landing bounce / jump arc survive).
 function FSM:_applyLimits()
 	local world = self.world
