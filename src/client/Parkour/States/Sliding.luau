@@ -10,7 +10,15 @@ Sliding.Grounded = true
 function Sliding:Enter(world, data)
 	world.setGravity(Config.BaseGravity)
 	world.setTurnSpeed(Config.FaceResponsivenessSprint)
-	world.anim:play("Slide", { restart = true })
+
+	local track = world.anim:play("SlideStart", { restart = true })
+	if track then
+		track.Stopped:Connect(function()
+			if world.anim.current == "SlideStart" then
+				world.anim:play("SlideLoop")
+			end
+		end)
+	end
 
 	local planar = Vector3.new(data.velocity.X, 0, data.velocity.Z)
 	local speed = planar.Magnitude
