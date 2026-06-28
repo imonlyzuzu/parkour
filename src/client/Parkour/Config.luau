@@ -66,6 +66,14 @@ return {
 	MantleClearMargin = 0.8, -- extra height the pop clears above the ledge top
 	MantleDuration = 0.7, -- safety cap on mantle duration (normally ends on landing)
 
+	-- Ledge hang & climb (Mantle replacement)
+	LedgeHangDrop = 3, -- HRP sits this many studs below the ledge top while hanging
+	LedgeHangWallGap = 1.5, -- HRP distance off the wall face (along the ledge normal) while hanging
+	LedgeReleaseCooldown = 0.4, -- ignore ledge grabs this long after releasing (no instant re-grab)
+	LedgeClimbForward = 10, -- forward drive speed while climbing onto a ledge
+	LedgeClimbClearMargin = 0.8, -- extra height the climb pop clears above the ledge top
+	LedgeClimbDuration = 0.7, -- safety cap on climb duration (normally ends on landing)
+
 	-- Feel limits & landing (movement-feel pass)
 	TerminalFallSpeed = 85, -- hard cap on downward speed (studs/s)
 	MaxGroundSpeed = 44, -- hard cap on commanded horizontal speed (studs/s)
