@@ -123,17 +123,16 @@ function Airborne:Update(fsm, world, data, dt)
 			world.raycastParams
 		)
 		if bounceHit and fsm:ConsumeBufferedInput("Jump", Config.WallBounceWindow) then
-			local reflected = Airborne._reflectBounce(hVelBounce, flat(bounceHit.Normal))
-			local capped = if reflected.Magnitude > Config.TrickMaxSpeed
-				then reflected.Unit * Config.TrickMaxSpeed
-				else reflected
-			world.setPlanarVelocity(Vector2.new(capped.X, capped.Z))
-			world.doJump(Config.WallBounceUpKick)
-			data.isTrickSpeed = true
-			data.lastWallJump = os.clock()
-			if world.debug then
-				print(string.format("[Parkour] wall bounce (spd=%.1f)", capped.Magnitude))
+			-- Stash raw reflection for WallBounce (boost is applied there, not here).
+			local n = flat(bounceHit.Normal)
+			local rawReflected = hVelBounce - n * (2 * hVelBounce:Dot(n))
+			-- Cap raw reflected so TrickMaxSpeed is still respected after boost.
+			if rawReflected.Magnitude * Config.WallBounceBoost > Config.TrickMaxSpeed then
+				rawReflected = rawReflected.Unit * (Config.TrickMaxSpeed / Config.WallBounceBoost)
 			end
+			data.bounceIncomingDir = hVelBounce.Unit
+			data.bounceReflected = rawReflected
+			fsm:TransitionTo("WallBounce")
 			return
 		end
 	end

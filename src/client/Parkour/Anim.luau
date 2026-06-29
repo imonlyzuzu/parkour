@@ -20,6 +20,7 @@ local CONFIG = {
 	SlideStart = { kfs = "SlideStart", priority = Enum.AnimationPriority.Action, looped = false },
 	SlideLoop  = { kfs = "SlideLoop",  priority = Enum.AnimationPriority.Action },
 	Roll = { kfs = "Roll", priority = Enum.AnimationPriority.Action, looped = false },
+	Vault = { kfs = "Vault", priority = Enum.AnimationPriority.Action, looped = false },
 	Fall = { kfs = "Falling", priority = Enum.AnimationPriority.Movement },
 	WallRunL = { kfs = "WallRunL", priority = Enum.AnimationPriority.Action },
 	WallRunR = { kfs = "WallRunR", priority = Enum.AnimationPriority.Action },
@@ -27,7 +28,9 @@ local CONFIG = {
 	Climb = { kfs = "Climb", priority = Enum.AnimationPriority.Action },
 	LedgeHold = { kfs = "LedgeHold", priority = Enum.AnimationPriority.Action },
 	LedgeClimb = { kfs = "LedgeClimb", priority = Enum.AnimationPriority.Action, looped = false },
-	Crouch = { kfs = "Crouch", priority = Enum.AnimationPriority.Movement },
+	Crouch      = { kfs = "Crouch",      priority = Enum.AnimationPriority.Movement },
+	BounceStart = { kfs = "BounceStart", priority = Enum.AnimationPriority.Action, looped = false },
+	BounceEnd   = { kfs = "BounceEnd",   priority = Enum.AnimationPriority.Action, looped = false },
 }
 
 local Anim = {}
@@ -119,10 +122,14 @@ function Anim:play(key: string, opts: { speed: number?, fadeIn: number?, fadeOut
 		return self.tracks[key] or nil
 	end
 
-	if self.current then
-		local prev = self.tracks[self.current]
-		if prev then
-			prev:Stop(opts.fadeOut or 0.15)
+	local fadeOut = opts.fadeOut or 0.2
+	local fadeIn  = opts.fadeIn  or 0.2
+
+	-- Fade out every track that is currently playing, not just self.current,
+	-- so overlapping clips from quick state transitions don't linger.
+	for k, track in self.tracks do
+		if track and k ~= key and (track :: AnimationTrack).IsPlaying then
+			(track :: AnimationTrack):Stop(fadeOut)
 		end
 	end
 
@@ -130,7 +137,7 @@ function Anim:play(key: string, opts: { speed: number?, fadeIn: number?, fadeOut
 	local track = self:_getTrack(key)
 	if track then
 		track:AdjustSpeed(opts.speed or 1)
-		track:Play(opts.fadeIn or 0.15)
+		track:Play(fadeIn)
 	end
 	return track
 end
