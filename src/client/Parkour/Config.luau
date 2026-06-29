@@ -63,8 +63,8 @@ return {
 	LedgeGrabReach = 3, -- forward distance to detect a grabbable ledge
 	LedgeReachUp = 2.5, -- how far above the HRP a ledge top can be and still grab
 	-- Ledge hang & climb
-	LedgeHangDrop = 1.5, -- HRP sits this many studs below the ledge top while hanging (smaller = cling higher)
-	LedgeHangWallGap = 1.5, -- HRP distance off the wall face (along the ledge normal) while hanging
+	LedgeHangDrop = 2, -- HRP sits this many studs below the ledge top while hanging (smaller = cling higher)
+	LedgeHangWallGap = 1.1, -- HRP distance off the wall face (along the ledge normal) while hanging
 	LedgeHangApproachGain = 10, -- P-controller stiffness for gliding into / holding the hang pose (higher = snappier, lower = floatier)
 	LedgeReleaseCooldown = 0.4, -- ignore ledge grabs this long after releasing (no instant re-grab)
 	LedgeClimbForward = 10, -- forward drive speed while climbing onto a ledge
@@ -88,6 +88,9 @@ return {
 	WallBounceBoost = 1.25, -- multiplier applied to the reflected horizontal speed
 	WallBounceUpKick = 12, -- vertical launch speed on a successful bounce
 	WallBounceProbeDist = 3, -- forward raycast reach used to detect an imminent wall touch
+	WallBounceStartDuration = 0.18,  -- seconds in BounceStart phase (facing wall, frozen)
+	WallBounceEndDuration   = 0.22,  -- seconds in BounceEnd phase (rotating + launching)
+	WallBounceRotateSpeed   = 200,   -- very fast yaw easing during the 180° snap
 
 	-- Momentum tech: grapple / swing
 	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
