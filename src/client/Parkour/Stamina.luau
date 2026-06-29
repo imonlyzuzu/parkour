@@ -97,6 +97,7 @@ local function buildJumpCharges(hrp: BasePart)
 	layout.Parent = bg
 
 	local pips = {}
+	local pipStrokes = {}
 	for i = 1, 3 do
 		local pip = Instance.new("Frame")
 		pip.Name = "Pip" .. i
@@ -113,11 +114,12 @@ local function buildJumpCharges(hrp: BasePart)
 		pipStroke.Transparency = 0.3
 		pipStroke.Enabled = false
 		pipStroke.Parent = pip
+		pipStrokes[i] = pipStroke
 
 		pips[i] = pip
 	end
 
-	return gui, pips
+	return gui, pips, pipStrokes
 end
 
 function Stamina.new(config)
@@ -129,6 +131,7 @@ function Stamina.new(config)
 	self._conn         = nil
 	self._fill         = nil
 	self._pips         = {}
+	self._pipStrokes   = {}
 	self._barGui       = nil
 	self._chargesGui   = nil
 	return self
@@ -138,7 +141,7 @@ function Stamina:attachToCharacter(character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart")
 
 	self._barGui, self._fill = buildStaminaBar(hrp)
-	self._chargesGui, self._pips = buildJumpCharges(hrp)
+	self._chargesGui, self._pips, self._pipStrokes = buildJumpCharges(hrp)
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_tick(dt)
@@ -160,6 +163,7 @@ function Stamina:detach()
 	end
 	self._fill     = nil
 	self._pips = {}
+	self._pipStrokes = {}
 end
 
 function Stamina:_tick(dt: number)
@@ -187,7 +191,7 @@ function Stamina:_updateUI()
 	for i, pip in self._pips do
 		local active = i <= self._charges
 		pip.BackgroundColor3 = active and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
-		pip:FindFirstChildOfClass("UIStroke").Enabled = not active
+		self._pipStrokes[i].Enabled = not active
 	end
 end
 
