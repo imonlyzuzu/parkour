@@ -1,8 +1,93 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Stamina = {}
 Stamina.__index = Stamina
+
+local function buildStaminaBar(hrp: BasePart)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "StaminaBar"
+	gui.Size = UDim2.new(0, 76, 0, 14)
+	gui.StudsOffset = Vector3.new(1.8, 2.2, 0)
+	gui.AlwaysOnTop = false
+	gui.ResetOnSpawn = false
+	gui.LightInfluence = 1
+	gui.Parent = hrp
+
+	local bg = Instance.new("Frame")
+	bg.Name = "Bar"
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.new(0, 0, 0)
+	bg.BackgroundTransparency = 0.55
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 6)
+	bgCorner.Parent = bg
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.AnchorPoint = Vector2.new(0, 0.5)
+	fill.Position = UDim2.new(0, 2, 0.5, 0)
+	fill.Size = UDim2.new(1, -4, 0, 6)
+	fill.BackgroundColor3 = Color3.new(1, 1, 1)
+	fill.BackgroundTransparency = 0
+	fill.BorderSizePixel = 0
+	fill.Parent = bg
+
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 3)
+	fillCorner.Parent = fill
+
+	return gui, fill
+end
+
+local function buildJumpCharges(hrp: BasePart)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "JumpCharges"
+	gui.Size = UDim2.new(0, 60, 0, 20)
+	gui.StudsOffset = Vector3.new(-1.8, 2.2, 0)
+	gui.AlwaysOnTop = false
+	gui.ResetOnSpawn = false
+	gui.LightInfluence = 1
+	gui.Parent = hrp
+
+	local bg = Instance.new("Frame")
+	bg.Name = "Background"
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.new(0, 0, 0)
+	bg.BackgroundTransparency = 0.55
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 6)
+	bgCorner.Parent = bg
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.Parent = bg
+
+	local diamonds = {}
+	for i = 1, 3 do
+		local d = Instance.new("TextLabel")
+		d.Name = "Diamond" .. i
+		d.Size = UDim2.new(0, 14, 0, 14)
+		d.BackgroundTransparency = 1
+		d.Text = "◆"
+		d.TextSize = 13
+		d.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+		d.TextColor3 = Color3.new(1, 1, 1)
+		d.TextTransparency = 0
+		d.Parent = bg
+		diamonds[i] = d
+	end
+
+	return gui, diamonds
+end
 
 function Stamina.new(config)
 	local self = setmetatable({}, Stamina)
@@ -13,26 +98,16 @@ function Stamina.new(config)
 	self._conn         = nil
 	self._fill         = nil
 	self._diamonds     = {}
-	self._barClone     = nil
-	self._chargesClone = nil
+	self._barGui       = nil
+	self._chargesGui   = nil
 	return self
 end
 
 function Stamina:attachToCharacter(character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart")
-	local ui  = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("StaminaUI")
 
-	self._barClone = ui:WaitForChild("StaminaBar"):Clone()
-	self._barClone.Parent = hrp
-	self._fill = self._barClone:WaitForChild("Bar"):WaitForChild("Fill")
-
-	self._chargesClone = ui:WaitForChild("JumpCharges"):Clone()
-	self._chargesClone.Parent = hrp
-	self._diamonds = {
-		self._chargesClone:WaitForChild("Diamond1"),
-		self._chargesClone:WaitForChild("Diamond2"),
-		self._chargesClone:WaitForChild("Diamond3"),
-	}
+	self._barGui, self._fill = buildStaminaBar(hrp)
+	self._chargesGui, self._diamonds = buildJumpCharges(hrp)
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_tick(dt)
@@ -44,13 +119,13 @@ function Stamina:detach()
 		self._conn:Disconnect()
 		self._conn = nil
 	end
-	if self._barClone then
-		self._barClone:Destroy()
-		self._barClone = nil
+	if self._barGui then
+		self._barGui:Destroy()
+		self._barGui = nil
 	end
-	if self._chargesClone then
-		self._chargesClone:Destroy()
-		self._chargesClone = nil
+	if self._chargesGui then
+		self._chargesGui:Destroy()
+		self._chargesGui = nil
 	end
 	self._fill     = nil
 	self._diamonds = {}
