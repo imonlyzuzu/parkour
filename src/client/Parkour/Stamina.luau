@@ -6,38 +6,49 @@ Stamina.__index = Stamina
 local function buildStaminaBar(hrp: BasePart)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "StaminaBar"
-	gui.Size = UDim2.new(0, 76, 0, 14)
-	gui.StudsOffset = Vector3.new(1.8, 2.2, 0)
-	gui.AlwaysOnTop = false
+	gui.Size = UDim2.new(0, 14, 0, 58)
+	gui.StudsOffset = Vector3.new(1.5, 1.6, 0)
+	gui.AlwaysOnTop = true
 	gui.ResetOnSpawn = false
-	gui.LightInfluence = 1
+	gui.LightInfluence = 0
 	gui.Parent = hrp
+
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(0, 8, 0, 50)
+	shadow.Position = UDim2.new(0, 4.5, 0, 5.5)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.5
+	shadow.BorderSizePixel = 0
+	shadow.Parent = gui
+	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 4)
 
 	local bg = Instance.new("Frame")
 	bg.Name = "Bar"
-	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.Size = UDim2.new(0, 8, 0, 50)
+	bg.Position = UDim2.new(0, 3, 0, 4)
 	bg.BackgroundColor3 = Color3.new(0, 0, 0)
-	bg.BackgroundTransparency = 0.55
+	bg.BackgroundTransparency = 0
 	bg.BorderSizePixel = 0
 	bg.Parent = gui
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
 
-	local bgCorner = Instance.new("UICorner")
-	bgCorner.CornerRadius = UDim.new(0, 6)
-	bgCorner.Parent = bg
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 1
+	stroke.Transparency = 0.5
+	stroke.Parent = bg
 
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
-	fill.AnchorPoint = Vector2.new(0, 0.5)
-	fill.Position = UDim2.new(0, 2, 0.5, 0)
-	fill.Size = UDim2.new(1, -4, 0, 6)
+	fill.AnchorPoint = Vector2.new(0, 0)
+	fill.Position = UDim2.new(0, 2, 0, 2)
+	fill.Size = UDim2.new(0, 4, 0, 46)
 	fill.BackgroundColor3 = Color3.new(1, 1, 1)
 	fill.BackgroundTransparency = 0
 	fill.BorderSizePixel = 0
 	fill.Parent = bg
-
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 3)
-	fillCorner.Parent = fill
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 
 	return gui, fill
 end
