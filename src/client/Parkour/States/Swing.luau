@@ -19,6 +19,7 @@ Swing.SkipWallSlide = true
 function Swing:Enter(world, data, prevState, anchorPos: Vector3)
 	data.anchorPos = anchorPos
 	world.setGravity(0)
+	world.stamina:drain(Config.StaminaSwingCost)
 end
 
 function Swing:Update(fsm, world, data, dt)

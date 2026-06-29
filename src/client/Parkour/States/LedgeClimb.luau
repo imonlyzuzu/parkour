@@ -31,6 +31,7 @@ function LedgeClimb:Enter(world, data)
 
 	world.setPlanarVelocity(Vector2.new(data.climbForward.X, data.climbForward.Z) * Config.LedgeClimbForward)
 	world.doJump(pop)
+	world.stamina:drain(Config.StaminaLedgeClimbCost)
 end
 
 function LedgeClimb:Update(fsm, world, data, dt)

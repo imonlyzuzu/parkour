@@ -45,6 +45,13 @@ function WallRun:Enter(world, data)
 end
 
 function WallRun:Update(fsm, world, data, dt)
+	-- Drain stamina each tick; drop off the wall if exhausted.
+	world.stamina:drainPerSec(Config.StaminaWallRunCost, dt)
+	if not world.stamina:canAct() then
+		fsm:TransitionTo("Airborne")
+		return
+	end
+
 	-- Landed -> resume sprinting.
 	if data.isGrounded and data.velocity.Y <= 0.5 then
 		fsm:TransitionTo("Sprinting")

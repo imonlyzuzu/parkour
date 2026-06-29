@@ -39,6 +39,8 @@ function Sliding:Enter(world, data)
 		data.isTrickSpeed = true
 		data.bhopChain = nil
 	end
+
+	world.stamina:drain(Config.StaminaSlideCost)
 end
 
 function Sliding:Update(fsm, world, data, dt)

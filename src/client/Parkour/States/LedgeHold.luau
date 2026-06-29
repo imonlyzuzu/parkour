@@ -41,6 +41,15 @@ function LedgeHold:Enter(world, data)
 end
 
 function LedgeHold:Update(fsm, world, data, dt)
+	-- Drain stamina while hanging; release if exhausted.
+	world.stamina:drainPerSec(Config.StaminaLedgeHangCost, dt)
+	if not world.stamina:canAct() then
+		world.setGravity(Config.BaseGravity)
+		data.lastLedgeRelease = os.clock()
+		fsm:TransitionTo("Airborne")
+		return
+	end
+
 	-- Glide-and-hold via one P-controller: command a velocity proportional to the
 	-- offset to the anchor. Far away (entry) it drives the body in and eases as it
 	-- nears; at the anchor the velocity is ~0 and it holds, self-correcting drift.
