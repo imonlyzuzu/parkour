@@ -49,9 +49,11 @@ function Sliding:Update(fsm, world, data, dt)
 
 	-- Jump out of the slide, keeping horizontal momentum.
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		world.doJump(Config.JumpSpeed)
-		if fsm:TryTransition("Airborne") then
-			return
+		if world.stamina:tryConsumeJump() then
+			world.doJump(Config.JumpSpeed)
+			if fsm:TryTransition("Airborne") then
+				return
+			end
 		end
 	end
 

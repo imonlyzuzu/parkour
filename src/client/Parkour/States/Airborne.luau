@@ -59,11 +59,13 @@ function Airborne:Update(fsm, world, data, dt)
 		end
 		-- Jump buffered into the landing -> bounce straight back up.
 		if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-			if world.debug then
-				print("[Parkour] buffered jump fired on landing")
+			if world.stamina:tryConsumeJump() then
+				if world.debug then
+					print("[Parkour] buffered jump fired on landing")
+				end
+				world.doJump(Config.JumpSpeed)
+				return
 			end
-			world.doJump(Config.JumpSpeed)
-			return
 		end
 		-- Resume ground movement, keeping momentum. The FSM's grounded snap
 		-- zeroes any residual downward velocity next tick, so this lands flat.
@@ -76,10 +78,12 @@ function Airborne:Update(fsm, world, data, dt)
 	-- Outside the coyote window the jump stays buffered to fire on landing.
 	if os.clock() - data.lastGroundedTime <= Config.CoyoteTime then
 		if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-			if world.debug then
-				print("[Parkour] coyote jump fired")
+			if world.stamina:tryConsumeJump() then
+				if world.debug then
+					print("[Parkour] coyote jump fired")
+				end
+				world.doJump(Config.JumpSpeed)
 			end
-			world.doJump(Config.JumpSpeed)
 		end
 	end
 

@@ -50,8 +50,10 @@ function Walking:Update(fsm, world, data, dt)
 
 	-- Jump (buffered on key-down by the controller).
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		world.doJump(Config.JumpSpeed)
-		fsm:TryTransition("Airborne")
+		if world.stamina:tryConsumeJump() then
+			world.doJump(Config.JumpSpeed)
+			fsm:TryTransition("Airborne")
+		end
 	end
 end
 

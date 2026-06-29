@@ -59,8 +59,10 @@ function Sprinting:Update(fsm, world, data, dt)
 	world.setFacing(moveDir)
 
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		world.doJump(Config.JumpSpeed)
-		fsm:TryTransition("Airborne")
+		if world.stamina:tryConsumeJump() then
+			world.doJump(Config.JumpSpeed)
+			fsm:TryTransition("Airborne")
+		end
 	end
 end
 
