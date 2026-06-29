@@ -56,48 +56,68 @@ end
 local function buildJumpCharges(hrp: BasePart)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "JumpCharges"
-	gui.Size = UDim2.new(0, 60, 0, 20)
-	gui.StudsOffset = Vector3.new(-1.8, 2.2, 0)
-	gui.AlwaysOnTop = false
+	gui.Size = UDim2.new(0, 14, 0, 52)
+	gui.StudsOffset = Vector3.new(-1.5, 1.6, 0)
+	gui.AlwaysOnTop = true
 	gui.ResetOnSpawn = false
-	gui.LightInfluence = 1
+	gui.LightInfluence = 0
 	gui.Parent = hrp
+
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(0, 12, 0, 38)
+	shadow.Position = UDim2.new(0, 2.5, 0, 8.5)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.5
+	shadow.BorderSizePixel = 0
+	shadow.Parent = gui
+	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 4)
 
 	local bg = Instance.new("Frame")
 	bg.Name = "Background"
-	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.Size = UDim2.new(0, 10, 0, 36)
+	bg.Position = UDim2.new(0, 1, 0, 7)
 	bg.BackgroundColor3 = Color3.new(0, 0, 0)
-	bg.BackgroundTransparency = 0.55
+	bg.BackgroundTransparency = 0
 	bg.BorderSizePixel = 0
 	bg.Parent = gui
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
 
-	local bgCorner = Instance.new("UICorner")
-	bgCorner.CornerRadius = UDim.new(0, 6)
-	bgCorner.Parent = bg
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 1
+	stroke.Transparency = 0.5
+	stroke.Parent = bg
 
 	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.FillDirection = Enum.FillDirection.Vertical
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 8)
+	layout.Padding = UDim.new(0, 4)
 	layout.Parent = bg
 
-	local diamonds = {}
+	local pips = {}
 	for i = 1, 3 do
-		local d = Instance.new("TextLabel")
-		d.Name = "Diamond" .. i
-		d.Size = UDim2.new(0, 14, 0, 14)
-		d.BackgroundTransparency = 1
-		d.Text = "◆"
-		d.TextSize = 13
-		d.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-		d.TextColor3 = Color3.new(1, 1, 1)
-		d.TextTransparency = 0
-		d.Parent = bg
-		diamonds[i] = d
+		local pip = Instance.new("Frame")
+		pip.Name = "Pip" .. i
+		pip.Size = UDim2.new(0, 8, 0, 8)
+		pip.BackgroundColor3 = Color3.new(1, 1, 1)
+		pip.BackgroundTransparency = 0
+		pip.BorderSizePixel = 0
+		pip.Parent = bg
+		Instance.new("UICorner", pip).CornerRadius = UDim.new(0, 3)
+
+		local pipStroke = Instance.new("UIStroke")
+		pipStroke.Color = Color3.new(1, 1, 1)
+		pipStroke.Thickness = 1
+		pipStroke.Transparency = 0.3
+		pipStroke.Enabled = false
+		pipStroke.Parent = pip
+
+		pips[i] = pip
 	end
 
-	return gui, diamonds
+	return gui, pips
 end
 
 function Stamina.new(config)
@@ -108,7 +128,7 @@ function Stamina.new(config)
 	self._chargeTimer  = 0
 	self._conn         = nil
 	self._fill         = nil
-	self._diamonds     = {}
+	self._pips         = {}
 	self._barGui       = nil
 	self._chargesGui   = nil
 	return self
@@ -118,7 +138,7 @@ function Stamina:attachToCharacter(character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart")
 
 	self._barGui, self._fill = buildStaminaBar(hrp)
-	self._chargesGui, self._diamonds = buildJumpCharges(hrp)
+	self._chargesGui, self._pips = buildJumpCharges(hrp)
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_tick(dt)
@@ -139,7 +159,7 @@ function Stamina:detach()
 		self._chargesGui = nil
 	end
 	self._fill     = nil
-	self._diamonds = {}
+	self._pips = {}
 end
 
 function Stamina:_tick(dt: number)
@@ -161,11 +181,13 @@ end
 
 function Stamina:_updateUI()
 	if self._fill then
-		local scale = math.max(0, self._stamina / self._cfg.StaminaMax)
-		self._fill.Size = UDim2.new(scale, -4, 0, 6)
+		local ratio = math.max(0, self._stamina / self._cfg.StaminaMax)
+		self._fill.Size = UDim2.new(0, 4, 0, 46 * ratio)
 	end
-	for i, diamond in self._diamonds do
-		diamond.TextTransparency = i <= self._charges and 0 or 0.72
+	for i, pip in self._pips do
+		local active = i <= self._charges
+		pip.BackgroundColor3 = active and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
+		pip:FindFirstChildOfClass("UIStroke").Enabled = not active
 	end
 end
 
