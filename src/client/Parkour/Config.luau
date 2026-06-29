@@ -95,6 +95,20 @@ return {
 	-- Momentum tech: grapple / swing
 	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
 
+	-- Stamina system
+	StaminaMax            = 100,  -- stamina pool ceiling
+	StaminaRegenRate      = 18,   -- /s, normal regen
+	StaminaRegenDebt      = 9,    -- /s, regen while stamina < 0 (debt)
+	StaminaJumpCost       = 33,   -- stamina per jump (3 jumps = 99 stamina)
+	StaminaVaultCost      = 3,    -- stamina on vault landing (cheap on purpose)
+	StaminaSlideCost      = 5,
+	StaminaWallRunCost    = 2,    -- /s while wall-running
+	StaminaLedgeHangCost  = 1,    -- /s while hanging
+	StaminaLedgeClimbCost = 15,
+	StaminaSwingCost      = 20,
+	JumpMaxCharges        = 3,    -- hard cap: at most 3 jumps per charge window
+	JumpChargeInterval    = 2,    -- seconds to refill one charge
+
 	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
 	SlopeTiltSpeed = 10, -- easing rate toward the slope/upright orientation (role of FaceResponsivenessWalk)
 	MaxWalkableSlopeAngle = 50, -- ground steeper than this (degrees) stops counting as ground; it acts as a wall (no grounding, no tilt)
