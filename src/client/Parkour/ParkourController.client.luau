@@ -18,6 +18,7 @@ local CollectionService = game:GetService("CollectionService")
 local FSM = require(script.Parent.FSM)
 local Config = require(script.Parent.Config)
 local Anim = require(script.Parent.Anim)
+local Stamina = require(script.Parent.Stamina)
 local States = script.Parent.States
 
 local player = Players.LocalPlayer
@@ -408,6 +409,10 @@ local function setup(character: Model)
 	world.updateFacing(0) -- write the initial upright orientation immediately
 	world.anim = Anim.new(humanoid)
 
+	local stamina = Stamina.new(Config)
+	world.stamina = stamina
+	stamina:attachToCharacter(character)
+
 	local fsm = FSM.new(world)
 	world.fsm = fsm
 	activeFSM = fsm
@@ -429,6 +434,7 @@ local function setup(character: Model)
 	character.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			fsm:Stop()
+			stamina:detach()
 			if activeFSM == fsm then
 				activeFSM = nil
 			end
