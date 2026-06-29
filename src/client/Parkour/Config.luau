@@ -63,8 +63,9 @@ return {
 	LedgeGrabReach = 3, -- forward distance to detect a grabbable ledge
 	LedgeReachUp = 2.5, -- how far above the HRP a ledge top can be and still grab
 	-- Ledge hang & climb
-	LedgeHangDrop = 3, -- HRP sits this many studs below the ledge top while hanging
+	LedgeHangDrop = 1.5, -- HRP sits this many studs below the ledge top while hanging (smaller = cling higher)
 	LedgeHangWallGap = 1.5, -- HRP distance off the wall face (along the ledge normal) while hanging
+	LedgeHangApproachGain = 10, -- P-controller stiffness for gliding into / holding the hang pose (higher = snappier, lower = floatier)
 	LedgeReleaseCooldown = 0.4, -- ignore ledge grabs this long after releasing (no instant re-grab)
 	LedgeClimbForward = 10, -- forward drive speed while climbing onto a ledge
 	LedgeClimbClearMargin = 0.8, -- extra height the climb pop clears above the ledge top

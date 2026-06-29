@@ -1,8 +1,10 @@
 -- LedgeHold: hang off a Grabbable ledge. Entered from Airborne when a jump
--- brings a grabbable ledge edge within reach. The HRP is pinned next to the
--- wall, facing it, LedgeHangDrop studs below the ledge top, with gravity off and
--- velocity held at zero. Space -> LedgeClimb (climb up and over). S or Crouch ->
--- release into Airborne (a cooldown on the Airborne side prevents an instant
+-- brings a grabbable ledge edge within reach. With gravity off, the body GLIDES
+-- into a fixed hang pose next to the wall (facing it, LedgeHangDrop studs below
+-- the ledge top) and then holds there -- both driven by one P-controller
+-- (velocity proportional to the offset), so entry eases in instead of teleporting
+-- and the hold self-corrects. Space -> LedgeClimb (climb up and over). S or Crouch
+-- -> release into Airborne (a cooldown on the Airborne side prevents an instant
 -- re-grab of the same ledge).
 
 local Config = require(script.Parent.Parent.Config)
@@ -18,35 +20,36 @@ LedgeHold.SkipWallSlide = true
 
 function LedgeHold:Enter(world, data)
 	world.setGravity(0)
+	world.setTurnSpeed(Config.FaceResponsivenessSprint)
 
 	-- Flattened normal points away from the wall toward the player; face into it.
 	local normal = flat(data.ledgeNormal)
 	local into = -normal
 
-	-- Pin the body in a consistent hang pose regardless of where the grab fired:
-	-- at the grab point's XZ, pushed a small gap off the wall face, LedgeHangDrop
-	-- studs below the ledge top.
+	-- The fixed hang anchor, regardless of where the grab fired: the grab point's
+	-- XZ, pushed a small gap off the wall face, LedgeHangDrop studs below the ledge
+	-- top. We do NOT teleport here -- Update glides the body to it.
 	local grab = data.ledgeGrabPoint
-	local pos = Vector3.new(grab.X, data.ledgeTopY - Config.LedgeHangDrop, grab.Z)
+	data.ledgeHangPos = Vector3.new(grab.X, data.ledgeTopY - Config.LedgeHangDrop, grab.Z)
 		+ normal * Config.LedgeHangWallGap
-	world.hrp.CFrame = CFrame.lookAlong(pos, into)
+	data.ledgeHangInto = into
 
-	-- Face the wall immediately (no easing-in over several frames): set the easing
-	-- target AND snap facingDir so the rigid orientation is already correct.
+	-- Ease the rig around to face the wall (turnSpeed eases it in updateFacing).
 	world.setFacing(into)
-	world.facingDir = into
-
-	world.setPlanarVelocity(Vector2.zero)
-	world.doJump(0)
 
 	world.anim:play("LedgeHold")
 end
 
 function LedgeHold:Update(fsm, world, data, dt)
-	-- Hold pinned: zero velocity each tick. With gravity 0 the body stays at rest
-	-- exactly where Enter snapped it.
-	world.setPlanarVelocity(Vector2.zero)
-	world.doJump(0)
+	-- Glide-and-hold via one P-controller: command a velocity proportional to the
+	-- offset to the anchor. Far away (entry) it drives the body in and eases as it
+	-- nears; at the anchor the velocity is ~0 and it holds, self-correcting drift.
+	-- Gravity is 0, so this fully owns the motion (no teleport, smooth approach).
+	local toTarget = data.ledgeHangPos - world.hrp.Position
+	local vel = toTarget * Config.LedgeHangApproachGain
+	world.setPlanarVelocity(Vector2.new(vel.X, vel.Z))
+	world.doJump(vel.Y)
+	world.setFacing(data.ledgeHangInto)
 
 	-- Climb up.
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
