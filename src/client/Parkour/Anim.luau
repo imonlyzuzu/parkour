@@ -29,8 +29,6 @@ local CONFIG = {
 	LedgeHold = { kfs = "LedgeHold", priority = Enum.AnimationPriority.Action },
 	LedgeClimb = { kfs = "LedgeClimb", priority = Enum.AnimationPriority.Action, looped = false },
 	Crouch      = { kfs = "Crouch",      priority = Enum.AnimationPriority.Movement },
-	BounceStart = { kfs = "BounceStart", priority = Enum.AnimationPriority.Action, looped = false },
-	BounceEnd   = { kfs = "BounceEnd",   priority = Enum.AnimationPriority.Action, looped = false },
 }
 
 local Anim = {}
