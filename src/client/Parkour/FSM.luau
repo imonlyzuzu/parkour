@@ -20,6 +20,16 @@ FSM.__index = FSM
 -- as grounded once the floor is within GROUND_SNAP of the HRP centre.
 local GROUND_PROBE = 6
 local GROUND_SNAP = 3.3
+-- Ideal perpendicular distance from HRP centre to the ground surface when the
+-- feet are exactly touching (feet = HRP.Y - 3 on flat ground). Used by the
+-- depenetration step to lift the rig back to the correct height when a fast
+-- landing overshoots this ideal position, driving the non-collidable legs into
+-- the geometry.
+local R6_HRP_TO_FEET = 3.0
+-- Maximum upward correction speed (studs/s) applied by the depenetration step.
+-- Low enough that the rise reads as a smooth settle rather than a visible upward
+-- pop: a 2-stud overshoot corrects in ~0.3 s instead of one jarring tick.
+local DEPENETRATION_SPEED = 6
 
 -- How far the rig's body surface sits from the HRP centre horizontally (R6
 -- half-width). The wall-slide probe casts this far plus the next step's travel
@@ -388,6 +398,40 @@ function FSM:_applySlopeMovement()
 	world.commandV = slope.Unit * speed
 end
 
+-- Depenetration: when a grounded state has its feet below the surface (the HRP
+-- overshot the ideal height because the previous tick's downward velocity
+-- carried it past ground-level before the snap-to-zero fired), gently push the
+-- rig back up via commandV so the physics engine moves it smoothly over several
+-- frames rather than teleporting. Small overshoots resolve in one tick; large
+-- ones are capped at DEPENETRATION_SPEED so the correction reads as a smooth
+-- settle instead of a visible snap.
+function FSM:_depenetrateGround(dt)
+	local data = self.data
+	if not (data.isGrounded and self.currentState and self.currentState.Grounded) then
+		return
+	end
+	local normalY = data.groundNormal.Y
+	if normalY < 1e-3 then
+		return
+	end
+	-- Convert the sensor's perpendicular distance back to a vertical distance
+	-- from the HRP centre to the hit surface, then compare against the ideal.
+	local vertDist = data.groundDistance / normalY
+	local penetration = R6_HRP_TO_FEET - vertDist
+	if penetration > 0.05 then
+		-- Cap at DEPENETRATION_SPEED (low) so the correction is a smooth
+		-- multi-frame settle rather than an abrupt upward kick.
+		-- _integrateGravity already zeroed commandV.Y (grounded), so we only
+		-- need to raise it; math.max preserves any larger upward value from
+		-- _applySlopeMovement (e.g. the projected uphill component).
+		local correctionVy = math.min(penetration / dt, DEPENETRATION_SPEED)
+		local cv = self.world.commandV
+		if cv.Y < correctionVy then
+			self.world.commandV = Vector3.new(cv.X, correctionVy, cv.Z)
+		end
+	end
+end
+
 -- Cross-cutting grapple trigger: unlike every other transition (which a
 -- state decides for itself), firing the grapple must work from ANY state, so
 -- it's checked here once per tick rather than duplicated into every state
@@ -434,6 +478,7 @@ function FSM:Start(initialState)
 		self:_applyWallSlide(dt)
 		self:_applyLimits()
 		self:_applySlopeMovement()
+		self:_depenetrateGround(dt)
 		self.world.flush()
 
 		-- Tilt the rig to the ground while planted; stand upright otherwise.

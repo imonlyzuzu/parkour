@@ -26,6 +26,9 @@ return {
 	-- Input timing
 	JumpBuffer = 0.15, -- queued jump fires if grounded within this window
 	CoyoteTime = 0.15, -- jump still valid this long after leaving ground
+	JumpGroundedGrace = 0.05, -- ignore Airborne's touchdown check for this long after entering: the
+	-- ground sensor / read-back velocity can still reflect last tick's grounded state for one Heartbeat
+	-- right after a jump is issued, which would otherwise cancel the jump as an instant "landing"
 
 	-- Slide (Task 3)
 	SlideSpeed = 36, -- speed a slide is launched at
@@ -50,6 +53,7 @@ return {
 	WallRunSpeed = 30, -- forward speed locked along the wall
 	WallRunMinSpeed = 13, -- need at least this horizontal speed to start
 	WallRunMaxInto = 0.5, -- max fraction of motion aimed at the wall face to still start a (parallel) run; above this it's a head-on hit and is rejected
+	WallRunMaxEntryVelY = 5, -- only start a run once vertical speed has settled near the jump apex; rejects starting mid-ascent so a fresh jump can't chain into WallRun's lower gravity for free height
 	WallJumpUp = 42, -- vertical launch off a wall
 	WallJumpOut = 34, -- push away from the wall normal
 	WallCooldown = 0.4, -- ignore walls this long after a wall jump (no re-stick)

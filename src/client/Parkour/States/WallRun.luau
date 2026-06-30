@@ -38,8 +38,10 @@ function WallRun:Enter(world, data)
 	end
 
 	-- Small upward lift so the run arcs along the wall instead of instantly
-	-- sinking and grounding straight back out.
-	world.doJump(math.max(data.velocity.Y, Config.WallRunLift))
+	-- sinking and grounding straight back out. Always WallRunLift, not the
+	-- incoming Y speed, so this can never re-arm a fresh jump's residual
+	-- vertical speed under WallRun's much lower gravity.
+	world.doJump(Config.WallRunLift)
 
 	world.anim:play(data.wallSide == "L" and "WallRunL" or "WallRunR")
 end

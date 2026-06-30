@@ -43,8 +43,12 @@ end
 function Airborne:Update(fsm, world, data, dt)
 	local hrp = world.hrp
 
-	-- Touchdown (guard against the rising phase right after a jump).
-	if data.isGrounded and data.velocity.Y <= 0.5 then
+	-- Touchdown (guard against the rising phase right after a jump). The grace
+	-- period also covers a one-Heartbeat race right after entering this state from
+	-- a jump: the ground sensor / read-back velocity can still reflect last tick's
+	-- grounded reading, which would otherwise read as an instant landing and cancel
+	-- the jump (charge consumed, no actual launch).
+	if data.isGrounded and data.velocity.Y <= 0.5 and fsm:TimeInState() > Config.JumpGroundedGrace then
 		-- Crouch held through the jump -> chain straight back into a slide
 		-- (b-hop), skipping the roll. Checked before the buffered-Crouch roll
 		-- so a held key always wins over a tap that happened to land in the buffer.
@@ -83,6 +87,7 @@ function Airborne:Update(fsm, world, data, dt)
 					print("[Parkour] coyote jump fired")
 				end
 				world.doJump(Config.JumpSpeed)
+				return
 			end
 		end
 	end
@@ -149,6 +154,7 @@ function Airborne:Update(fsm, world, data, dt)
 	local hVel = Vector3.new(data.velocity.X, 0, data.velocity.Z)
 	local hSpeed = hVel.Magnitude
 	if hSpeed >= Config.WallRunMinSpeed and world.isKeyDown(Enum.KeyCode.W)
+		and data.velocity.Y <= Config.WallRunMaxEntryVelY
 		and os.clock() - (data.lastWallJump or 0) > Config.WallCooldown then
 		local pos = hrp.Position
 		local right = flat(hrp.CFrame.RightVector)
