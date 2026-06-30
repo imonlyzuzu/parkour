@@ -1,8 +1,6 @@
-| Status | Task |
-| --- | --- |
-| [x] | Explore project context |
-| [x] | Ask clarifying questions (one at a time) |
-| [x] | Propose 2-3 approaches |
-| [x] | Present design sections |
-| [x] | Write design doc |
-| [x] | Transition to implementation (invoke writing-plans) |
+# Active Task: Stamina UI Implementation
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Task 1: Create StaminaUI Module | ⬜ Pending |
+| 2 | Task 2: Integrate StaminaUI in Stamina.luau | ⬜ Pending |
