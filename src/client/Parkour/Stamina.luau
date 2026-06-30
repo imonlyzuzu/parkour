@@ -1,5 +1,8 @@
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local Stamina = {}
 Stamina.__index = Stamina
@@ -7,19 +10,16 @@ Stamina.__index = Stamina
 local function buildStaminaBar(hrp: BasePart)
 	local gui = ReplicatedStorage.Shared.StaminaUI.StaminaBar:Clone()
 	gui.Parent = hrp
-	return gui, gui.Bar.Fill
+	local group = gui:WaitForChild("CanvasGroup")
+	return gui, group, group:WaitForChild("Fill")
 end
 
 local function buildJumpCharges(hrp: BasePart)
 	local gui = ReplicatedStorage.Shared.StaminaUI.JumpCharges:Clone()
 	gui.Parent = hrp
-	local bg = gui.Background
-	local pips = { bg.Pip1, bg.Pip2, bg.Pip3 }
-	local pipStrokes = {}
-	for i, pip in pips do
-		pipStrokes[i] = pip:FindFirstChildOfClass("UIStroke")
-	end
-	return gui, pips, pipStrokes
+	local group = gui:WaitForChild("CanvasGroup")
+	local pips = { group:WaitForChild("Pip1"), group:WaitForChild("Pip2"), group:WaitForChild("Pip3") }
+	return gui, group, pips
 end
 
 function Stamina.new(config)
@@ -31,17 +31,18 @@ function Stamina.new(config)
 	self._conn         = nil
 	self._fill         = nil
 	self._pips         = {}
-	self._pipStrokes   = {}
 	self._barGui       = nil
 	self._chargesGui   = nil
+	self._barCanvasGroup = nil
+	self._chargesCanvasGroup = nil
 	return self
 end
 
 function Stamina:attachToCharacter(character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart")
 
-	self._barGui, self._fill = buildStaminaBar(hrp)
-	self._chargesGui, self._pips, self._pipStrokes = buildJumpCharges(hrp)
+	self._barGui, self._barCanvasGroup, self._fill = buildStaminaBar(hrp)
+	self._chargesGui, self._chargesCanvasGroup, self._pips = buildJumpCharges(hrp)
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_tick(dt)
@@ -63,7 +64,8 @@ function Stamina:detach()
 	end
 	self._fill     = nil
 	self._pips = {}
-	self._pipStrokes = {}
+	self._barCanvasGroup = nil
+	self._chargesCanvasGroup = nil
 end
 
 function Stamina:_tick(dt: number)
@@ -86,12 +88,24 @@ end
 function Stamina:_updateUI()
 	if self._fill then
 		local ratio = math.max(0, self._stamina / self._cfg.StaminaMax)
-		self._fill.Size = UDim2.new(0, 4, 0, 46 * ratio)
+		self._fill.Size = UDim2.new(1, 0, ratio, 0)
+		
+		local targetTransparency = (self._stamina >= self._cfg.StaminaMax) and 1 or 0
+		if self._barCanvasGroup.GroupTransparency ~= targetTransparency then
+			TweenService:Create(self._barCanvasGroup, TWEEN_INFO, { GroupTransparency = targetTransparency }):Play()
+		end
 	end
-	for i, pip in self._pips do
-		local active = i <= self._charges
-		pip.BackgroundColor3 = active and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
-		self._pipStrokes[i].Enabled = not active
+	
+	if self._pips then
+		for i, pip in self._pips do
+			local active = i <= self._charges
+			pip.BackgroundTransparency = active and 0 or 0.8
+		end
+		
+		local targetTransparency = (self._charges == self._cfg.JumpMaxCharges) and 0.5 or 0
+		if self._chargesCanvasGroup.GroupTransparency ~= targetTransparency then
+			TweenService:Create(self._chargesCanvasGroup, TWEEN_INFO, { GroupTransparency = targetTransparency }):Play()
+		end
 	end
 end
 
