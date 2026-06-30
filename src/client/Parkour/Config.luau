@@ -113,7 +113,7 @@ return {
 	JumpChargeInterval    = 2,    -- seconds to refill one charge
 
 	-- Momentum tech: perfect-timing bunnyhop (jump-chain, no crouch)
-	BhopWindow            = 0.08, -- perfect-hop timing window after touchdown (tight; shorter than JumpBuffer)
+	BhopWindow            = 0.15, -- perfect-hop timing window after touchdown (matches JumpBuffer -- 0.08 felt too tight to land)
 	BunnyhopSpeedBonus    = 4,    -- flat horizontal speed add per perfect hop (own constant, not shared with BhopSpeedBonus)
 
 	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
