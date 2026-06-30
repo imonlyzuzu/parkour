@@ -120,4 +120,14 @@ function Stamina:tryConsumeJump(): boolean
 	return true
 end
 
+-- Perfect-timing bunnyhop: drains stamina like an ordinary jump but never
+-- spends a charge, so chaining hops doesn't burn the jump-charge pool.
+function Stamina:tryConsumePerfectHop(): boolean
+	if self._stamina <= 0 then
+		return false
+	end
+	self._stamina -= self._cfg.StaminaJumpCost
+	return true
+end
+
 return Stamina
