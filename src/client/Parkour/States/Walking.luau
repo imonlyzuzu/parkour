@@ -3,6 +3,7 @@
 -- relative to the camera) rather than turning to face the travel direction.
 
 local Config = require(script.Parent.Parent.Config)
+local Bhop = require(script.Parent.Parent.Bhop)
 
 local Walking = {}
 Walking.Grounded = true
@@ -48,9 +49,14 @@ function Walking:Update(fsm, world, data, dt)
 
 	world.anim:play(moveDir.Magnitude > 0 and "Walk" or "Idle")
 
-	-- Jump (buffered on key-down by the controller).
+	-- Jump (buffered on key-down by the controller). A tap landing within
+	-- Config.BhopWindow of touchdown is a perfect bunnyhop: no charge cost,
+	-- speed bonus. Outside that window it's an ordinary full-cost jump.
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		if world.stamina:tryConsumeJump() then
+		if Bhop.isPerfectWindow(data) and world.stamina:tryConsumePerfectHop() then
+			Bhop.perform(world, data)
+			fsm:TryTransition("Airborne")
+		elseif world.stamina:tryConsumeJump() then
 			world.doJump(Config.JumpSpeed)
 			fsm:TryTransition("Airborne")
 		end

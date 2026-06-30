@@ -3,6 +3,7 @@
 -- Running downhill boosts speed; uphill dampens it.
 
 local Config = require(script.Parent.Parent.Config)
+local Bhop = require(script.Parent.Parent.Bhop)
 
 local Sprinting = {}
 Sprinting.Grounded = true
@@ -58,8 +59,14 @@ function Sprinting:Update(fsm, world, data, dt)
 	-- Turn to face the travel direction.
 	world.setFacing(moveDir)
 
+	-- A tap landing within Config.BhopWindow of touchdown is a perfect
+	-- bunnyhop: no charge cost, speed bonus. Outside that window it's an
+	-- ordinary full-cost jump.
 	if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-		if world.stamina:tryConsumeJump() then
+		if Bhop.isPerfectWindow(data) and world.stamina:tryConsumePerfectHop() then
+			Bhop.perform(world, data)
+			fsm:TryTransition("Airborne")
+		elseif world.stamina:tryConsumeJump() then
 			world.doJump(Config.JumpSpeed)
 			fsm:TryTransition("Airborne")
 		end
