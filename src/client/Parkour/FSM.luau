@@ -90,6 +90,7 @@ function FSM.new(world)
 		groundDistance = math.huge,
 		groundInstance = nil,
 		lastGroundedTime = 0,
+		lastLandTime = 0, -- os.clock() timestamp of the last touchdown; drives the bunnyhop perfect-timing window (see Bhop.luau)
 		stateEnteredAt = 0,
 		keys = {}, -- held keys, maintained by the controller (KeyCode -> true)
 		inputBuffer = {}, -- { { action = string, time = number }, ... }

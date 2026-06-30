@@ -9,6 +9,7 @@
 
 local Config = require(script.Parent.Parent.Config)
 local Surfaces = require(script.Parent.Parent.Surfaces)
+local Bhop = require(script.Parent.Parent.Bhop)
 
 local function flat(v: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -49,6 +50,12 @@ function Airborne:Update(fsm, world, data, dt)
 	-- grounded reading, which would otherwise read as an instant landing and cancel
 	-- the jump (charge consumed, no actual launch).
 	if data.isGrounded and data.velocity.Y <= 0.5 and fsm:TimeInState() > Config.JumpGroundedGrace then
+		-- Stamp the touchdown time first: every branch below (including the
+		-- rebound jump a few lines down) is "at touchdown" for bunnyhop
+		-- timing purposes, and Walking/Sprinting read this on a later tick
+		-- if the player instead taps Jump shortly after landing.
+		data.lastLandTime = os.clock()
+
 		-- Crouch held through the jump -> chain straight back into a slide
 		-- (b-hop), skipping the roll. Checked before the buffered-Crouch roll
 		-- so a held key always wins over a tap that happened to land in the buffer.
@@ -61,13 +68,15 @@ function Airborne:Update(fsm, world, data, dt)
 		if fsm:ConsumeBufferedInput("Crouch", Config.JumpBuffer) and fsm:TryTransition("Landing") then
 			return
 		end
-		-- Jump buffered into the landing -> bounce straight back up.
+		-- Jump buffered into the landing -> bounce straight back up. This
+		-- always fires within the same tick lastLandTime was just set, so
+		-- it's a perfect hop by construction: no charge cost, speed bonus.
 		if fsm:ConsumeBufferedInput("Jump", Config.JumpBuffer) then
-			if world.stamina:tryConsumeJump() then
+			if world.stamina:tryConsumePerfectHop() then
 				if world.debug then
-					print("[Parkour] buffered jump fired on landing")
+					print("[Parkour] perfect bunnyhop fired on landing")
 				end
-				world.doJump(Config.JumpSpeed)
+				Bhop.perform(world, data)
 				return
 			end
 		end
