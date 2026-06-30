@@ -112,6 +112,10 @@ return {
 	JumpMaxCharges        = 3,    -- hard cap: at most 3 jumps per charge window
 	JumpChargeInterval    = 2,    -- seconds to refill one charge
 
+	-- Momentum tech: perfect-timing bunnyhop (jump-chain, no crouch)
+	BhopWindow            = 0.08, -- perfect-hop timing window after touchdown (tight; shorter than JumpBuffer)
+	BunnyhopSpeedBonus    = 4,    -- flat horizontal speed add per perfect hop (own constant, not shared with BhopSpeedBonus)
+
 	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
 	SlopeTiltSpeed = 10, -- easing rate toward the slope/upright orientation (role of FaceResponsivenessWalk)
 	MaxWalkableSlopeAngle = 50, -- ground steeper than this (degrees) stops counting as ground; it acts as a wall (no grounding, no tilt)
