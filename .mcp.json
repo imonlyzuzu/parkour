@@ -3,7 +3,7 @@
     "Roblox_Studio": {
       "command": "/home/zuzu/.var/app/org.vinegarhq.Vinegar/data/vinegar/kombucha/bin/wine",
       "args": [
-        "/home/zuzu/.var/app/org.vinegarhq.Vinegar/data/vinegar/versions/version-914135c3903b4ffb/StudioMCP.exe"
+        "/home/zuzu/.var/app/org.vinegarhq.Vinegar/data/vinegar/versions/version-71452ee9293e4e08/StudioMCP.exe"
       ],
       "env": {
         "WINEPREFIX": "/home/zuzu/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/studio"

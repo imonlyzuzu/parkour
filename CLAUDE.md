@@ -61,8 +61,8 @@ Set `State.Grounded = true` on states where the player is planted (Walking/Sprin
 
 ## Verifying movement changes
 
-There is **no headless Luau runner** — movement cannot be unit-tested from the shell. Verify in-Studio through the Roblox Studio MCP (below): use `execute_luau` probes, `Config.Debug` console prints (`get_console_output`), and a play-test on a test course. Tune in `Config.luau` and re-test by feel.
+There is **no headless Luau runner** — movement cannot be unit-tested from the shell. After making changes, check for errors and bugs via the Roblox Studio MCP console (`get_console_output`). Do **not** attempt to playtest or evaluate movement feel via MCP — playtesting is done by the user in Studio directly.
 
 ## Roblox Studio MCP
 
-A Roblox Studio MCP server is available — use the `mcp__Roblox_Studio__*` tools freely whenever they help: inspecting the game tree, reading/writing scripts, executing Luau, capturing screenshots, driving play-tests, searching the Creator Store, etc.
+A Roblox Studio MCP server is available — use the `mcp__Roblox_Studio__*` tools for: inspecting the game tree, reading/writing scripts, executing Luau probes, adding things such as UIs or objects, and checking the console for errors/bugs. **Never use MCP to live playtest or evaluate movement feel** (e.g. `start_stop_play`, simulated input to assess feel) — that is the user's responsibility, done by them directly in Studio.
