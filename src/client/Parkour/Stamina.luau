@@ -7,8 +7,6 @@ local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirectio
 local Stamina = {}
 Stamina.__index = Stamina
 
-local StaminaUI = require(script.Parent.StaminaUI)
-
 function Stamina.new(config)
 	local self = setmetatable({}, Stamina)
 	self._cfg          = config
@@ -30,8 +28,16 @@ function Stamina:attachToCharacter(character: Model)
 	if not player then return end
 	local playerGui = player:WaitForChild("PlayerGui")
 
-	self._barGui, self._barCanvasGroup, self._fill, self._pips = StaminaUI.create()
-	self._barGui.Parent = playerGui
+	self._barGui = playerGui:WaitForChild("ParkourStaminaUI")
+	self._barCanvasGroup = self._barGui:WaitForChild("CanvasGroup")
+	self._fill = self._barCanvasGroup:WaitForChild("StaminaBar"):WaitForChild("Fill")
+	
+	local jumpGroup = self._barCanvasGroup:WaitForChild("JumpCharges")
+	self._pips = {
+		jumpGroup:WaitForChild("Pip1"),
+		jumpGroup:WaitForChild("Pip2"),
+		jumpGroup:WaitForChild("Pip3")
+	}
 	self._chargesCanvasGroup = self._barCanvasGroup
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
@@ -45,11 +51,10 @@ function Stamina:detach()
 		self._conn = nil
 	end
 	if self._barGui then
-		self._barGui:Destroy()
+		-- We no longer destroy the UI here because ResetOnSpawn=false
 		self._barGui = nil
 	end
 	if self._chargesGui then
-		self._chargesGui:Destroy()
 		self._chargesGui = nil
 	end
 	self._fill     = nil
