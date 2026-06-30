@@ -7,20 +7,7 @@ local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirectio
 local Stamina = {}
 Stamina.__index = Stamina
 
-local function buildStaminaBar(hrp: BasePart)
-	local gui = ReplicatedStorage.Shared.StaminaUI.StaminaBar:Clone()
-	gui.Parent = hrp
-	local group = gui:WaitForChild("CanvasGroup")
-	return gui, group, group:WaitForChild("Fill")
-end
-
-local function buildJumpCharges(hrp: BasePart)
-	local gui = ReplicatedStorage.Shared.StaminaUI.JumpCharges:Clone()
-	gui.Parent = hrp
-	local group = gui:WaitForChild("CanvasGroup")
-	local pips = { group:WaitForChild("Pip1"), group:WaitForChild("Pip2"), group:WaitForChild("Pip3") }
-	return gui, group, pips
-end
+local StaminaUI = require(script.Parent.StaminaUI)
 
 function Stamina.new(config)
 	local self = setmetatable({}, Stamina)
@@ -39,10 +26,13 @@ function Stamina.new(config)
 end
 
 function Stamina:attachToCharacter(character: Model)
-	local hrp = character:WaitForChild("HumanoidRootPart")
+	local player = game.Players:GetPlayerFromCharacter(character)
+	if not player then return end
+	local playerGui = player:WaitForChild("PlayerGui")
 
-	self._barGui, self._barCanvasGroup, self._fill = buildStaminaBar(hrp)
-	self._chargesGui, self._chargesCanvasGroup, self._pips = buildJumpCharges(hrp)
+	self._barGui, self._barCanvasGroup, self._fill, self._pips = StaminaUI.create()
+	self._barGui.Parent = playerGui
+	self._chargesCanvasGroup = self._barCanvasGroup
 
 	self._conn = RunService.Heartbeat:Connect(function(dt)
 		self:_tick(dt)
@@ -88,9 +78,9 @@ end
 function Stamina:_updateUI()
 	if self._fill then
 		local ratio = math.max(0, self._stamina / self._cfg.StaminaMax)
-		self._fill.Size = UDim2.new(1, 0, ratio, 0)
+		self._fill.Size = UDim2.new(ratio, 0, 1, 0)
 		
-		local targetTransparency = (self._stamina >= self._cfg.StaminaMax) and 1 or 0
+		local targetTransparency = (self._stamina >= self._cfg.StaminaMax and self._charges == self._cfg.JumpMaxCharges) and 1 or 0
 		if self._barCanvasGroup.GroupTransparency ~= targetTransparency then
 			TweenService:Create(self._barCanvasGroup, TWEEN_INFO, { GroupTransparency = targetTransparency }):Play()
 		end
@@ -100,11 +90,6 @@ function Stamina:_updateUI()
 		for i, pip in self._pips do
 			local active = i <= self._charges
 			pip.BackgroundTransparency = active and 0 or 0.8
-		end
-		
-		local targetTransparency = (self._charges == self._cfg.JumpMaxCharges) and 0.5 or 0
-		if self._chargesCanvasGroup.GroupTransparency ~= targetTransparency then
-			TweenService:Create(self._chargesCanvasGroup, TWEEN_INFO, { GroupTransparency = targetTransparency }):Play()
 		end
 	end
 end
