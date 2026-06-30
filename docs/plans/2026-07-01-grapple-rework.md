@@ -912,9 +912,13 @@ CollectionService:AddTag(anchor, "Grappleable")
 print("Test anchor placed at", anchor.Position)
 ```
 
-**Step 2: Playtest**
+**Step 2: Check console for errors**
 
-Use `mcp__Roblox_Studio__start_stop_play` to enter play mode. Verify:
+Run via `mcp__Roblox_Studio__get_console_output` to verify no script errors after Rojo syncs the new code.
+
+**Step 3: Hand off to user for live playtesting**
+
+Per CLAUDE.md: never use MCP to live playtest or evaluate movement feel. The user playtests in Studio directly. Verify with them:
 1. A cyan diamond reticle appears on the test anchor when looking in its direction
 2. Pressing F starts the pull-in (player accelerates toward anchor, beam appears)
 3. Pull-in auto-transitions to swing (pendulum physics)
