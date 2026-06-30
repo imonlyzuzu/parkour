@@ -11,3 +11,5 @@ Base commit: 9298897
 - [x] Task 4: FSM lastLandTime; Airborne perfect rebound on touchdown (commits 0d1a485..6c4c2de, review clean)
 - [x] Task 5: Walking/Sprinting perfect-hop jump check (commits 957b994..1f0a2ed, review clean)
 - [x] Task 6: Final verification sweep (grep clean, console clean modulo stale-probe artifacts)
+
+## Final whole-branch review: clean (Ready to merge: Yes, no Critical/Important issues). Includes post-handoff tuning commit 7d84c94 (BhopWindow widened to 0.15 to match JumpBuffer per user playtest feedback).
