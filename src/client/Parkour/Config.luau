@@ -88,9 +88,8 @@ return {
 	WallBounceBoost = 1.25, -- multiplier applied to the reflected horizontal speed
 	WallBounceUpKick = 12, -- vertical launch speed on a successful bounce
 	WallBounceProbeDist = 3, -- forward raycast reach used to detect an imminent wall touch
-	WallBounceStartDuration = 0.18,  -- seconds in BounceStart phase (facing wall, frozen)
-	WallBounceEndDuration   = 0.22,  -- seconds in BounceEnd phase (rotating + launching)
-	WallBounceRotateSpeed   = 200,   -- very fast yaw easing during the 180° snap
+	WallBounceDuration    = 0.1,   -- hold time before returning to Airborne
+	WallBounceRotateSpeed = 200,   -- instant yaw snap to reflected direction
 
 	-- Momentum tech: grapple / swing
 	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
