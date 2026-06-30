@@ -10,4 +10,4 @@ Base commit: 9298897
 - [x] Task 3: Bhop.luau — shared timing + execution helper (commits 9f929e0..3f6e41b, review clean)
 - [x] Task 4: FSM lastLandTime; Airborne perfect rebound on touchdown (commits 0d1a485..6c4c2de, review clean)
 - [x] Task 5: Walking/Sprinting perfect-hop jump check (commits 957b994..1f0a2ed, review clean)
-- [ ] Task 6: Final verification sweep
+- [x] Task 6: Final verification sweep (grep clean, console clean modulo stale-probe artifacts)
