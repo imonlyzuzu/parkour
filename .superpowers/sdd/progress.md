@@ -9,5 +9,5 @@ Base commit: 9298897
 - [x] Task 2: Stamina — add charge-free perfect-hop consumption (commits c865060..67b9837, review clean)
 - [x] Task 3: Bhop.luau — shared timing + execution helper (commits 9f929e0..3f6e41b, review clean)
 - [x] Task 4: FSM lastLandTime; Airborne perfect rebound on touchdown (commits 0d1a485..6c4c2de, review clean)
-- [ ] Task 5: Walking and Sprinting — perfect-hop check on jump input
+- [x] Task 5: Walking/Sprinting perfect-hop jump check (commits 957b994..1f0a2ed, review clean)
 - [ ] Task 6: Final verification sweep
