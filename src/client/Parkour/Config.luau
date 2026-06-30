@@ -14,7 +14,8 @@ return {
 	SprintSpeed = 28,
 	WalkAccel = 16, -- higher = snappier walk response
 	SprintAccel = 9, -- lower = sprint momentum builds up over time
-	SlopeBoost = 0.35, -- fraction of speed gained downhill / lost uphill
+	SlopeBoostDownhill = 0.35, -- fraction of speed gained downhill
+	SlopeBoostUphill = 0.18, -- fraction of speed lost uphill
 
 	-- Jump
 	JumpSpeed = 45, -- initial upward velocity
@@ -99,24 +100,31 @@ return {
 	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
 
 	-- Stamina system
-	StaminaMax            = 100,  -- stamina pool ceiling
-	StaminaRegenRate      = 18,   -- /s, normal regen
-	StaminaRegenDebt      = 9,    -- /s, regen while stamina < 0 (debt)
-	StaminaJumpCost       = 33,   -- stamina per jump (3 jumps = 99 stamina)
-	StaminaVaultCost      = 3,    -- stamina on vault landing (cheap on purpose)
-	StaminaSlideCost      = 5,
-	StaminaWallRunCost    = 2,    -- /s while wall-running
-	StaminaLedgeHangCost  = 1,    -- /s while hanging
-	StaminaLedgeClimbCost = 15,
-	StaminaSwingCost      = 20,
+	-- Pool rescaled +40% (100 -> 140) so vault/wall-run/ledge-hang could be
+	-- pushed above proportional without the whole system feeling tighter.
+	-- Jump/ledge-climb/swing/slide scale exactly proportional to preserve
+	-- their existing feel; vault/wall-run/ledge-hang scale above that because
+	-- they read as free at their old absolute cost.
+	StaminaMax            = 140,  -- stamina pool ceiling
+	StaminaRegenRate      = 10,   -- /s, normal regen (proportional rescale)
+	StaminaRegenDebt      = 13,   -- /s, regen while stamina < 0 (debt; proportional rescale)
+	StaminaRegenDelay     = 0.25, -- /s, no passive regen for this long after any stamina spend (stops bunnyhop chains from out-regening their own cost)
+	StaminaJumpCost       = 15,   -- stamina per jump (proportional rescale; feel was already right)
+	StaminaVaultCost      = 9,    -- stamina on vault landing (pushed above proportional; was reading as free)
+	StaminaSlideCost      = 7,    -- proportional rescale; feel was already right
+	StaminaWallRunCost    = 4.5,  -- /s while wall-running (pushed above proportional; was reading as free)
+	StaminaLedgeHangCost  = 2.5,  -- /s while hanging (pushed above proportional; was reading as free)
+	StaminaLedgeClimbCost = 21,   -- proportional rescale; feel was already right
+	StaminaSwingCost      = 28,   -- proportional rescale; feel was already right
 	JumpMaxCharges        = 3,    -- hard cap: at most 3 jumps per charge window
 	JumpChargeInterval    = 2,    -- seconds to refill one charge
 
 	-- Momentum tech: perfect-timing bunnyhop (jump-chain, no crouch)
 	BhopWindow            = 0.15, -- perfect-hop timing window after touchdown (matches JumpBuffer -- 0.08 felt too tight to land)
-	BunnyhopSpeedBonus    = 4,    -- flat horizontal speed add per perfect hop (own constant, not shared with BhopSpeedBonus)
+	BunnyhopSpeedBonus    = 6,    -- flat horizontal speed add per perfect hop (own constant, not shared with BhopSpeedBonus)
 
 	-- Slope tilt: the rig orients its up-axis to the ground normal while grounded.
 	SlopeTiltSpeed = 10, -- easing rate toward the slope/upright orientation (role of FaceResponsivenessWalk)
 	MaxWalkableSlopeAngle = 50, -- ground steeper than this (degrees) stops counting as ground; it acts as a wall (no grounding, no tilt)
+	JumpTiltGrace = 0.15, -- keep tilting to the ground normal this long after leaving a Grounded state, so jumping off a ramp doesn't snap the rig upright mid-launch
 }
