@@ -28,6 +28,7 @@ function Bhop.perform(world, data)
 		world.setPlanarVelocity(planar.Unit * boosted)
 		data.isTrickSpeed = true
 	end
+	print("Bhop!")
 end
 
 return Bhop

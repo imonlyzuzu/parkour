@@ -49,10 +49,11 @@ function Sprinting:Update(fsm, world, data, dt)
 	local boost = 1
 	local downhill = Vector3.new(data.groundNormal.X, 0, data.groundNormal.Z)
 	if downhill.Magnitude > 1e-3 then
-		boost += math.clamp(moveDir:Dot(downhill.Unit), -1, 1) * Config.SlopeBoost
+		local slopeDot = math.clamp(moveDir:Dot(downhill.Unit), -1, 1)
+		boost += slopeDot * (if slopeDot >= 0 then Config.SlopeBoostDownhill else Config.SlopeBoostUphill)
 	end
 
-	local target = Vector2.new(moveDir.X, moveDir.Z) * (Config.SprintSpeed * boost)
+	local target = Vector2.new(moveDir.X, moveDir.Z) * (Config.SprintSpeed * boost) 
 	local current = world.getPlanarVelocity()
 	world.setPlanarVelocity(current:Lerp(target, math.min(1, Config.SprintAccel * dt)))
 

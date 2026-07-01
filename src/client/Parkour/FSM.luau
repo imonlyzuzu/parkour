@@ -329,6 +329,7 @@ function FSM:_applyWallSlide(dt)
 	if into < 0 then
 		horiz -= n * into
 		world.commandV = Vector3.new(horiz.X, cv.Y, horiz.Z)
+		world.planarV = Vector2.new(horiz.X, horiz.Z)
 	end
 end
 
@@ -356,6 +357,7 @@ function FSM:_applyLimits()
 	local horiz = Vector2.new(cv.X, cv.Z)
 	if horiz.Magnitude > cap then
 		horiz = horiz.Unit * cap
+		world.planarV = horiz
 	end
 
 	if data.isGrounded and self.currentState and self.currentState.Grounded then
@@ -396,6 +398,12 @@ function FSM:_applySlopeMovement()
 	if slope.Magnitude < 1e-3 then
 		return -- degenerate normal (shouldn't happen for a walkable surface)
 	end
+	-- Only the PHYSICS vector is foreshortened by the projection (XZ shrinks as
+	-- speed is redirected into Y). world.planarV (the states' notion of "current
+	-- horizontal speed" for acceleration) is deliberately left untouched here --
+	-- otherwise next tick's accel lerp would start from this foreshortened value
+	-- and re-shrink every tick, converging to an equilibrium speed far below the
+	-- state's actual target (e.g. sprinting plateauing well under SprintSpeed).
 	world.commandV = slope.Unit * speed
 end
 
@@ -472,9 +480,14 @@ function FSM:Start(initialState)
 		self:_depenetrateGround(dt)
 		self.world.flush()
 
-		-- Tilt the rig to the ground while planted; stand upright otherwise.
+		-- Tilt the rig to the ground while planted. Otherwise, keep tilting to the
+		-- last ground normal for a short grace window (e.g. jumping off a ramp) so
+		-- the rig doesn't snap upright the instant the Grounded state is left --
+		-- only stand upright once that grace has elapsed (genuinely airborne).
 		-- updateFacing eases world.upDir toward this target each tick.
 		if self.currentState and self.currentState.Grounded and self.data.isGrounded then
+			self.world.targetUp = self.data.groundNormal
+		elseif os.clock() - self.data.lastGroundedTime < Config.JumpTiltGrace then
 			self.world.targetUp = self.data.groundNormal
 		else
 			self.world.targetUp = Vector3.yAxis

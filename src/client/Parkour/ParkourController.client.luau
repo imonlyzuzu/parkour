@@ -225,15 +225,25 @@ local function setup(character: Model)
 	end
 
 	-- Command planar velocity (Vector2 in world XZ). Y stays owned by the FSM's
-	-- gravity integration / jumps, so it is left untouched here.
+	-- gravity integration / jumps, so it is left untouched here. planarV is the
+	-- "logical" horizontal speed states accelerate from -- kept separate from
+	-- commandV's XZ because the FSM's slope projection (FSM:_applySlopeMovement)
+	-- foreshortens commandV's XZ on a ramp (some of the speed is redirected into
+	-- Y to climb it). If states read that foreshortened XZ back as "current
+	-- speed" next tick, the foreshortening reapplies every tick and the rig's
+	-- speed converges to an equilibrium far below the real target (e.g.
+	-- sprinting plateaus well under SprintSpeed on any incline).
+	world.planarV = Vector2.zero
 	function world.setPlanarVelocity(planar: Vector2)
+		world.planarV = planar
 		world.commandV = Vector3.new(planar.X, world.commandV.Y, planar.Y)
 	end
 
-	-- Current commanded planar velocity (the XZ of the owned vector). States that
-	-- accelerate toward a target lerp from this.
+	-- Current commanded planar velocity. States that accelerate toward a target
+	-- lerp from this -- NOT from commandV's XZ, which the slope projection may
+	-- have foreshortened (see world.planarV above).
 	function world.getPlanarVelocity(): Vector2
-		return Vector2.new(world.commandV.X, world.commandV.Z)
+		return world.planarV
 	end
 
 	-- Push the owned velocity vector to the constraint. The FSM calls this once at

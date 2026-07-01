@@ -18,7 +18,7 @@ return {
 	SlopeBoostUphill = 0.18, -- fraction of speed lost uphill
 
 	-- Jump
-	JumpSpeed = 45, -- initial upward velocity
+	JumpSpeed = 45, -- initial upward velocity 
 
 	-- Facing (AlignOrientation responsiveness; higher = snappier turns)
 	FaceResponsivenessWalk = 18,
@@ -91,7 +91,7 @@ return {
 	WallBounceWindow = 0.12, -- jump-buffer window for a bounce (tighter than JumpBuffer)
 	WallBounceMinSpeed = 10, -- minimum incoming horizontal speed required to bounce
 	WallBounceBoost = 1.25, -- multiplier applied to the reflected horizontal speed
-	WallBounceUpKick = 12, -- vertical launch speed on a successful bounce
+	WallBounceUpKick = 28, -- vertical launch speed on a successful bounce
 	WallBounceProbeDist = 3, -- forward raycast reach used to detect an imminent wall touch
 	WallBounceDuration    = 0.1,   -- hold time before returning to Airborne
 	WallBounceRotateSpeed = 200,   -- instant yaw snap to reflected direction
@@ -108,10 +108,12 @@ return {
 	GrapplePullMaxSpeed   = 65,   -- max speed during the pull-in phase
 	GrapplePullMaxTime    = 0.8,  -- hard cap on pull duration before auto-transitioning to Swing
 	GrappleSwingRadius    = 15,   -- transition from GrapplePull to Swing when this close to anchor
+	GrapplePullTurnRate   = 4,    -- 1/s, exponential turn-rate blending toward anchor direction during pull-in (framerate-independent)
 
 	-- Swing phase
-	GrappleReelSpeed      = 8,    -- studs/s, passive rope shortening during normal swing
-	GrappleMinRadius      = 5,    -- minimum swing radius (rope can't shorten past this)
+	GrappleReelSpeed          = 8,    -- studs/s, passive rope shortening during normal swing
+	GrappleMinRadius          = 5,    -- minimum swing radius (rope can't shorten past this)
+	GrappleReelMaxCorrection  = 15,   -- studs/s, max radial correction speed pulling the player toward swingRadius
 
 	-- Slingshot (hold F through swing)
 	GrappleSlingshotReelSpeed = 20,  -- studs/s, faster rope reel while holding F
@@ -139,6 +141,8 @@ return {
 	StaminaSwingCost      = 28,   -- proportional rescale; feel was already right
 	JumpMaxCharges        = 3,    -- hard cap: at most 3 jumps per charge window
 	JumpChargeInterval    = 2,    -- seconds to refill one charge
+	StaminaLowThreshold      = 0.25, -- ratio of StaminaMax; label/bar go amber below this
+	StaminaCriticalThreshold = 0.10, -- ratio of StaminaMax; label/bar go red below this
 
 	-- Momentum tech: perfect-timing bunnyhop (jump-chain, no crouch)
 	BhopWindow            = 0.15, -- perfect-hop timing window after touchdown (matches JumpBuffer -- 0.08 felt too tight to land)
