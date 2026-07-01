@@ -48,6 +48,11 @@ function Swing:Enter(world, data, prevState, anchorPart: BasePart?)
 
 	-- Track whether F is held for slingshot mode.
 	data.grappleSlingshotActive = false
+
+	-- On the first Update tick, redirect incoming velocity onto the tangent
+	-- plane instead of letting the steady-state radial strip delete it --
+	-- see Update for why.
+	data.grappleMomentumRedirected = false
 end
 
 function Swing:Update(fsm, world, data, dt)
@@ -86,9 +91,25 @@ function Swing:Update(fsm, world, data, dt)
 	local u = r.Unit
 
 	local v = data.velocity
-	-- Strip the radial component: taut, inextensible rope only ever lets
-	-- velocity be tangential.
-	v -= u * v:Dot(u)
+
+	if not data.grappleMomentumRedirected then
+		-- First tick of this swing: GrapplePull's whole job was to accelerate
+		-- the player toward the anchor, so velocity here is almost entirely
+		-- radial. The steady-state radial strip below would delete nearly all
+		-- of it. Instead, redirect the FULL incoming speed onto the tangent
+		-- plane once, preserving momentum (Spider-Man-style swing feel)
+		-- rather than physically stripping it.
+		local tangent = v - u * v:Dot(u)
+		local tangentDir = if tangent.Magnitude > 1e-3
+			then tangent.Unit
+			else u:Cross(Vector3.yAxis).Unit -- degenerate (purely radial v): arbitrary horizontal tangent
+		v = tangentDir * v.Magnitude
+		data.grappleMomentumRedirected = true
+	else
+		-- Steady-state: strip the radial component. Taut, inextensible rope
+		-- only ever lets velocity be tangential.
+		v -= u * v:Dot(u)
+	end
 
 	-- Integrate gravity's tangential component only (the radial component
 	-- would just stretch/compress the "rope", which we've already disallowed).
