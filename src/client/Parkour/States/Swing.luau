@@ -125,6 +125,14 @@ function Swing:Update(fsm, world, data, dt)
 	local gravityVec = Vector3.new(0, -Config.BaseGravity, 0)
 	v += (gravityVec - u * gravityVec:Dot(u)) * dt
 
+	-- Reel-in: swingRadius (decremented above by GrappleReelSpeed/Slingshot)
+	-- is the TARGET rope length. Pull the player toward it with a clamped
+	-- radial correction, so shortening the rope actually shortens the
+	-- pendulum radius instead of being cosmetic bookkeeping.
+	local radialError = r.Magnitude - data.swingRadius -- positive = too far out
+	local correction = math.clamp(radialError / dt, -Config.GrappleReelMaxCorrection, Config.GrappleReelMaxCorrection)
+	v -= u * correction
+
 	world.setPlanarVelocity(Vector2.new(v.X, v.Z))
 	world.doJump(v.Y)
 	world.setFacing(flat(v))
