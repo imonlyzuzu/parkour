@@ -26,9 +26,13 @@ function GrapplePull.createRope(world, anchorPart: BasePart, anchorPos: Vector3)
 
 	local attach1 = Instance.new("Attachment")
 	attach1.Name = "GrappleAttach1"
-	-- Position the attachment at the anchor's world position.
-	attach1.WorldPosition = anchorPos
+	-- Parent FIRST, then set WorldPosition. Attachment.WorldPosition resolves
+	-- through the parent's CFrame; set before parenting, Roblox writes the raw
+	-- numeric value straight into local-space .Position, which then gets
+	-- reinterpreted through anchorPart's CFrame once parented -- producing a
+	-- rope endpoint offset by roughly the anchor's own world position.
 	attach1.Parent = anchorPart
+	attach1.WorldPosition = anchorPos
 
 	local beam = Instance.new("Beam")
 	beam.Name = "GrappleRope"
