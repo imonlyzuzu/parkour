@@ -48,6 +48,11 @@ function Swing:Enter(world, data, prevState, anchorPart: BasePart?)
 
 	-- Track whether F is held for slingshot mode.
 	data.grappleSlingshotActive = false
+
+	-- On the first Update tick, redirect incoming velocity onto the tangent
+	-- plane instead of letting the steady-state radial strip delete it --
+	-- see Update for why.
+	data.grappleMomentumRedirected = false
 end
 
 function Swing:Update(fsm, world, data, dt)
@@ -86,14 +91,47 @@ function Swing:Update(fsm, world, data, dt)
 	local u = r.Unit
 
 	local v = data.velocity
-	-- Strip the radial component: taut, inextensible rope only ever lets
-	-- velocity be tangential.
-	v -= u * v:Dot(u)
+
+	if not data.grappleMomentumRedirected then
+		-- First tick of this swing: GrapplePull's whole job was to accelerate
+		-- the player toward the anchor, so velocity here is almost entirely
+		-- radial. The steady-state radial strip below would delete nearly all
+		-- of it. Instead, redirect the FULL incoming speed onto the tangent
+		-- plane once, preserving momentum (Spider-Man-style swing feel)
+		-- rather than physically stripping it.
+		local tangent = v - u * v:Dot(u)
+		local tangentDir
+		if tangent.Magnitude > 1e-3 then
+			tangentDir = tangent.Unit
+		else
+			-- Degenerate (purely radial v): fall back to an arbitrary
+			-- horizontal tangent. u:Cross(yAxis) is ITSELF zero when u is
+			-- vertical (anchor directly overhead/underfoot), which would
+			-- normalize to NaN -- fall back once more to a fixed world axis
+			-- so this can never produce NaN velocity.
+			local horizontalTangent = u:Cross(Vector3.yAxis)
+			tangentDir = if horizontalTangent.Magnitude > 1e-3 then horizontalTangent.Unit else Vector3.xAxis
+		end
+		v = tangentDir * v.Magnitude
+		data.grappleMomentumRedirected = true
+	else
+		-- Steady-state: strip the radial component. Taut, inextensible rope
+		-- only ever lets velocity be tangential.
+		v -= u * v:Dot(u)
+	end
 
 	-- Integrate gravity's tangential component only (the radial component
 	-- would just stretch/compress the "rope", which we've already disallowed).
 	local gravityVec = Vector3.new(0, -Config.BaseGravity, 0)
 	v += (gravityVec - u * gravityVec:Dot(u)) * dt
+
+	-- Reel-in: swingRadius (decremented above by GrappleReelSpeed/Slingshot)
+	-- is the TARGET rope length. Pull the player toward it with a clamped
+	-- radial correction, so shortening the rope actually shortens the
+	-- pendulum radius instead of being cosmetic bookkeeping.
+	local radialError = r.Magnitude - data.swingRadius -- positive = too far out
+	local correction = math.clamp(radialError / dt, -Config.GrappleReelMaxCorrection, Config.GrappleReelMaxCorrection)
+	v -= u * correction
 
 	world.setPlanarVelocity(Vector2.new(v.X, v.Z))
 	world.doJump(v.Y)

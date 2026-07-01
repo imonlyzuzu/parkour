@@ -26,9 +26,13 @@ function GrapplePull.createRope(world, anchorPart: BasePart, anchorPos: Vector3)
 
 	local attach1 = Instance.new("Attachment")
 	attach1.Name = "GrappleAttach1"
-	-- Position the attachment at the anchor's world position.
-	attach1.WorldPosition = anchorPos
+	-- Parent FIRST, then set WorldPosition. Attachment.WorldPosition resolves
+	-- through the parent's CFrame; set before parenting, Roblox writes the raw
+	-- numeric value straight into local-space .Position, which then gets
+	-- reinterpreted through anchorPart's CFrame once parented -- producing a
+	-- rope endpoint offset by roughly the anchor's own world position.
 	attach1.Parent = anchorPart
+	attach1.WorldPosition = anchorPos
 
 	local beam = Instance.new("Beam")
 	beam.Name = "GrappleRope"
@@ -110,11 +114,14 @@ function GrapplePull:Update(fsm, world, data, dt)
 
 	-- Blend existing velocity toward the anchor direction.
 	-- This preserves lateral momentum: the player curves toward the anchor
-	-- rather than snapping instantly.
+	-- rather than snapping instantly. Framerate-independent exponential turn:
+	-- alpha approaches 1 smoothly regardless of dt, instead of the old
+	-- ad hoc ratio (which was ~always 1 at normal framerates, causing an
+	-- instant direction snap masquerading as a "blend").
 	local v = data.velocity
 	local currentSpeed = v.Magnitude
 	local pullSpeed = math.min(currentSpeed + Config.GrapplePullAccel * dt, Config.GrapplePullMaxSpeed)
-	local blendAlpha = math.min(1, Config.GrapplePullAccel * dt / math.max(currentSpeed, 1))
+	local blendAlpha = 1 - math.exp(-Config.GrapplePullTurnRate * dt)
 	local currentDir = if currentSpeed > 1e-3 then v / currentSpeed else dir
 	local newDir = currentDir:Lerp(dir, blendAlpha)
 	if newDir.Magnitude < 1e-3 then
