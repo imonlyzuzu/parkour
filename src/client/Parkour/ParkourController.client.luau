@@ -19,6 +19,7 @@ local FSM = require(script.Parent.FSM)
 local Config = require(script.Parent.Config)
 local Anim = require(script.Parent.Anim)
 local Stamina = require(script.Parent.Stamina)
+local GrappleTargeting = require(script.Parent.GrappleTargeting)
 local States = script.Parent.States
 
 local player = Players.LocalPlayer
@@ -188,15 +189,6 @@ local function setup(character: Model)
 	raycastParams.IgnoreWater = true
 	raycastParams.RespectCanCollide = true
 
-	-- Same character filter, but sees CanCollide=false parts too: grapple anchors
-	-- are deliberately non-collidable markers (they must never block movement),
-	-- so the camera-aimed grapple raycast needs to hit them anyway.
-	local raycastParamsAnyCollide = RaycastParams.new()
-	raycastParamsAnyCollide.FilterType = Enum.RaycastFilterType.Exclude
-	raycastParamsAnyCollide.FilterDescendantsInstances = { character }
-	raycastParamsAnyCollide.IgnoreWater = true
-	raycastParamsAnyCollide.RespectCanCollide = false
-
 	local world = {
 		player = player,
 		character = character,
@@ -206,7 +198,6 @@ local function setup(character: Model)
 		linearVelocity = linearVelocity,
 		alignOrientation = alignOrientation,
 		raycastParams = raycastParams,
-		raycastParamsAnyCollide = raycastParamsAnyCollide,
 		totalMass = totalMass,
 		-- The single owned target velocity (world space). States set XZ via
 		-- setPlanarVelocity / Y via doJump; the FSM integrates gravity into Y,
@@ -413,6 +404,22 @@ local function setup(character: Model)
 	world.stamina = stamina
 	stamina:attachToCharacter(character)
 
+	-- Grapple targeting: cone-scan runs on RenderStepped for responsive UI.
+	local grappleTargeting = GrappleTargeting.new()
+	world.grappleTargeting = grappleTargeting
+
+	local RunService = game:GetService("RunService")
+	local renderConn = RunService.RenderStepped:Connect(function()
+		local camera = workspace.CurrentCamera
+		if camera and world.hrp and world.hrp.Parent then
+			local target = grappleTargeting:scan(camera, world.hrp.Position)
+			-- Write the resolved target into FSM data for the Heartbeat trigger.
+			if activeFSM then
+				activeFSM.data.currentGrappleTarget = target
+			end
+		end
+	end)
+
 	local fsm = FSM.new(world)
 	world.fsm = fsm
 	activeFSM = fsm
@@ -428,6 +435,7 @@ local function setup(character: Model)
 	fsm:RegisterState("LedgeHold", require(States.LedgeHold))
 	fsm:RegisterState("LedgeClimb", require(States.LedgeClimb))
 	fsm:RegisterState("Swing", require(States.Swing))
+	fsm:RegisterState("GrapplePull", require(States.GrapplePull))
 
 	fsm:Start("Walking")
 
@@ -435,6 +443,8 @@ local function setup(character: Model)
 		if not parent then
 			fsm:Stop()
 			stamina:detach()
+			renderConn:Disconnect()
+			grappleTargeting:destroy()
 			if activeFSM == fsm then
 				activeFSM = nil
 			end
@@ -453,6 +463,18 @@ UserInputService.InputBegan:Connect(function(input: InputObject, processed: bool
 		activeFSM:BufferInput("Crouch")
 	elseif input.KeyCode == Enum.KeyCode.F then
 		activeFSM:BufferInput("Grapple")
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input: InputObject, processed: boolean)
+	if processed or not activeFSM then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseWheel then
+		local targeting = activeFSM.world.grappleTargeting
+		if targeting then
+			targeting:cycle(input.Position.Z > 0 and -1 or 1)
+		end
 	end
 end)
 

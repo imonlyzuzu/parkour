@@ -97,7 +97,28 @@ return {
 	WallBounceRotateSpeed = 200,   -- instant yaw snap to reflected direction
 
 	-- Momentum tech: grapple / swing
-	GrappleMaxRange = 80, -- max camera-raycast distance for firing the grapple
+	-- Targeting
+	GrappleMaxRange       = 120,  -- max distance for cone-scan targeting (increased from 80)
+	GrappleAimCone        = 35,   -- half-angle in degrees for auto-target cone
+	GrappleTargetScoreAngleWeight = 0.7,  -- weight for angular proximity in target scoring
+	GrappleTargetScoreDistWeight  = 0.3,  -- weight for distance proximity in target scoring
+
+	-- Pull phase
+	GrapplePullAccel      = 120,  -- studs/s^2, acceleration toward the anchor during pull-in
+	GrapplePullMaxSpeed   = 65,   -- max speed during the pull-in phase
+	GrapplePullMaxTime    = 0.8,  -- hard cap on pull duration before auto-transitioning to Swing
+	GrappleSwingRadius    = 15,   -- transition from GrapplePull to Swing when this close to anchor
+
+	-- Swing phase
+	GrappleReelSpeed      = 8,    -- studs/s, passive rope shortening during normal swing
+	GrappleMinRadius      = 5,    -- minimum swing radius (rope can't shorten past this)
+
+	-- Slingshot (hold F through swing)
+	GrappleSlingshotReelSpeed = 20,  -- studs/s, faster rope reel while holding F
+	GrappleSlingshotBoost     = 1.3, -- speed multiplier applied on slingshot release
+
+	-- Stamina
+	GrappleStaminaCost    = 10,   -- flat stamina cost on grapple fire (replaces StaminaSwingCost for grapple)
 
 	-- Stamina system
 	-- Pool rescaled +40% (100 -> 140) so vault/wall-run/ledge-hang could be
