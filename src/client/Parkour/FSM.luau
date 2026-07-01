@@ -10,7 +10,7 @@
 local RunService = game:GetService("RunService")
 
 local Config = require(script.Parent.Config)
-local Surfaces = require(script.Parent.Surfaces)
+
 
 local FSM = {}
 FSM.__index = FSM
@@ -433,29 +433,19 @@ function FSM:_depenetrateGround(dt)
 	end
 end
 
--- Cross-cutting grapple trigger: unlike every other transition (which a
--- state decides for itself), firing the grapple must work from ANY state, so
--- it's checked here once per tick rather than duplicated into every state
--- file. A camera-aimed raycast on a buffered "Grapple" input hits a
--- Grappleable-tagged part -> Swing; a miss just consumes the input.
+-- Cross-cutting grapple trigger: uses the pre-resolved target from
+-- GrappleTargeting (set each RenderStepped frame by ParkourController).
+-- A buffered "Grapple" input + a valid target = transition to GrapplePull.
 function FSM:_checkGrappleTrigger()
 	if not self:ConsumeBufferedInput("Grapple", 0.2) then
 		return false
 	end
-	local camera = workspace.CurrentCamera
-	if not camera then
+	local target = self.data.currentGrappleTarget
+	if not target or not target.Parent then
 		return false
 	end
-	local hit = workspace:Raycast(
-		camera.CFrame.Position,
-		camera.CFrame.LookVector * Config.GrappleMaxRange,
-		self.world.raycastParamsAnyCollide
-	)
-	if hit and Surfaces.allows(hit.Instance, "Grapple") then
-		self:TransitionTo("Swing", hit.Position)
-		return true
-	end
-	return false
+	self:TransitionTo("GrapplePull", target)
+	return true
 end
 
 function FSM:Start(initialState)
