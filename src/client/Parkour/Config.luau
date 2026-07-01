@@ -108,10 +108,12 @@ return {
 	GrapplePullMaxSpeed   = 65,   -- max speed during the pull-in phase
 	GrapplePullMaxTime    = 0.8,  -- hard cap on pull duration before auto-transitioning to Swing
 	GrappleSwingRadius    = 15,   -- transition from GrapplePull to Swing when this close to anchor
+	GrapplePullTurnRate   = 4,    -- 1/s, exponential turn-rate blending toward anchor direction during pull-in (framerate-independent)
 
 	-- Swing phase
-	GrappleReelSpeed      = 8,    -- studs/s, passive rope shortening during normal swing
-	GrappleMinRadius      = 5,    -- minimum swing radius (rope can't shorten past this)
+	GrappleReelSpeed          = 8,    -- studs/s, passive rope shortening during normal swing
+	GrappleMinRadius          = 5,    -- minimum swing radius (rope can't shorten past this)
+	GrappleReelMaxCorrection  = 15,   -- studs/s, max radial correction speed pulling the player toward swingRadius
 
 	-- Slingshot (hold F through swing)
 	GrappleSlingshotReelSpeed = 20,  -- studs/s, faster rope reel while holding F
