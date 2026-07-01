@@ -100,9 +100,18 @@ function Swing:Update(fsm, world, data, dt)
 		-- plane once, preserving momentum (Spider-Man-style swing feel)
 		-- rather than physically stripping it.
 		local tangent = v - u * v:Dot(u)
-		local tangentDir = if tangent.Magnitude > 1e-3
-			then tangent.Unit
-			else u:Cross(Vector3.yAxis).Unit -- degenerate (purely radial v): arbitrary horizontal tangent
+		local tangentDir
+		if tangent.Magnitude > 1e-3 then
+			tangentDir = tangent.Unit
+		else
+			-- Degenerate (purely radial v): fall back to an arbitrary
+			-- horizontal tangent. u:Cross(yAxis) is ITSELF zero when u is
+			-- vertical (anchor directly overhead/underfoot), which would
+			-- normalize to NaN -- fall back once more to a fixed world axis
+			-- so this can never produce NaN velocity.
+			local horizontalTangent = u:Cross(Vector3.yAxis)
+			tangentDir = if horizontalTangent.Magnitude > 1e-3 then horizontalTangent.Unit else Vector3.xAxis
+		end
 		v = tangentDir * v.Magnitude
 		data.grappleMomentumRedirected = true
 	else
